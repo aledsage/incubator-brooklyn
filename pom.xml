@@ -490,7 +490,21 @@
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
                     <artifactId>findbugs-maven-plugin</artifactId>
-                    <version>2.3.2</version>
+                    <version>3.0.0</version>
+                    <configuration>
+                        <xmlOutput>true</xmlOutput>
+                        <xmlOutputDirectory>target/site</xmlOutputDirectory>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-pmd-plugin</artifactId>
+                    <version>3.1</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-checkstyle-plugin</artifactId>
+                    <version>2.12.1</version>
                 </plugin>
                 <plugin>
                     <groupId>org.codehaus.mojo</groupId>
@@ -1119,10 +1133,6 @@
                     <plugin>
                         <groupId>org.codehaus.mojo</groupId>
                         <artifactId>findbugs-maven-plugin</artifactId>
-                        <configuration>
-                            <xmlOutput>true</xmlOutput>
-                            <xmlOutputDirectory>target/site</xmlOutputDirectory>
-                        </configuration>
                         <executions>
                             <execution>
                                 <phase>process-classes</phase>
@@ -1137,7 +1147,6 @@
                     </plugin>
                     <plugin>
                         <artifactId>maven-pmd-plugin</artifactId>
-                        <version>2.5</version>
                         <inherited>true</inherited>
                         <configuration>
                             <failOnViolation>false</failOnViolation>
@@ -1171,6 +1180,29 @@
         </profile>
         <profile>
             <id>Coverage</id>
+            <reporting>
+                <plugins>
+                    <plugin>
+                        <groupId>org.codehaus.mojo</groupId>
+                        <artifactId>findbugs-maven-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-pmd-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <reportSets>
+                            <reportSet>
+                                <reports>
+                                    <report>checkstyle</report>
+                                </reports>
+                            </reportSet>
+                        </reportSets>
+                    </plugin>
+                </plugins>
+            </reporting>
             <dependencies>
                 <dependency>
                     <groupId>net.sourceforge.cobertura</groupId>
