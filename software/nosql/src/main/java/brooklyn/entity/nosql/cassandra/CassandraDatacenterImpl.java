@@ -340,6 +340,7 @@ public class CassandraDatacenterImpl extends DynamicClusterImpl implements Cassa
         
         policy = addPolicy(PolicySpec.create(MemberTrackingPolicy.class)
                 .displayName("Cassandra Cluster Tracker")
+                .configure(MemberTrackingPolicy.NOTIFY_ON_DUPLICATES, false)
                 .configure("sensorsToTrack", ImmutableSet.of(Attributes.SERVICE_UP, Attributes.HOSTNAME, CassandraNode.THRIFT_PORT))
                 .configure("group", this));
     }
