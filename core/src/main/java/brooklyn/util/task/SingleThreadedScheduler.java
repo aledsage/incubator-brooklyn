@@ -18,7 +18,6 @@
  */
 package brooklyn.util.task;
 
-import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CancellationException;
@@ -34,6 +33,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import brooklyn.management.Task;
+import brooklyn.util.collections.TimeWindowedList;
+import brooklyn.util.collections.TimestampedValue;
+import brooklyn.util.time.Duration;
+
+import com.google.common.annotations.VisibleForTesting;
 
 /**
  * Instances of this class ensures that {@link Task}s execute with in-order
@@ -51,6 +55,8 @@ public class SingleThreadedScheduler implements TaskScheduler, CanSetName {
     
     private final Queue<QueuedSubmission<?>> order = new ConcurrentLinkedQueue<QueuedSubmission<?>>();
     private final AtomicBoolean running = new AtomicBoolean(false);
+
+    private final BackingUpWarner backingUpWarner = new BackingUpWarner(Duration.THIRTY_SECONDS);
     
     private ExecutorService executor;
 
@@ -79,14 +85,10 @@ public class SingleThreadedScheduler implements TaskScheduler, CanSetName {
             WrappingFuture<T> f = new WrappingFuture<T>();
             order.add(new QueuedSubmission<T>(c, f));
             int size = order.size();
-            if (size>0 && (size == 50 || (size<=500 && (size%100)==0) || (size%1000)==0) && size!=lastSizeWarn) {
-                LOG.warn("{} is backing up, {} tasks queued", this, size);
-                lastSizeWarn = size;
-            }
+            backingUpWarner.onSize(size);
             return f;
         }
     }
-    int lastSizeWarn = 0;
 
     @SuppressWarnings({ "rawtypes", "unchecked" })
     private synchronized void onEnd() {
@@ -117,7 +119,47 @@ public class SingleThreadedScheduler implements TaskScheduler, CanSetName {
             }});
     }
     
-    
+    // FIXME If goes up to 1000 and then back down again, don't get logging about back down.
+    // But want to avoid repeated logging of "back down" if going 50->100->50->100->50->100, etc.
+    @VisibleForTesting
+    static class BackingUpWarner {
+        private final TimeWindowedList<Integer> lastSizesWarned;
+
+        public BackingUpWarner(Duration thirtySeconds) {
+            lastSizesWarned = new TimeWindowedList<Integer>(Duration.THIRTY_SECONDS);
+        }        
+        public void onSize(int size) {
+            if (size>0 && (size == 50 || (size<=500 && (size%100)==0) || (size%1000)==0)) {
+                Integer max = max(lastSizesWarned.getValues());
+                Integer min = min(lastSizesWarned.getValues());
+                if (max == null || size > max) {
+                    warn(this+" is backing up, "+size+" tasks queued", size);
+                } else if (min != null && size < min) {
+                    warn(this+" is backing up less, "+size+" tasks queued", size);
+                }
+            }
+        }
+        protected void warn(String msg, int size) {
+            LOG.warn(msg);
+            lastSizesWarned.add(size);
+        }
+        private Integer max(Iterable<TimestampedValue<Integer>> vals) {
+            Integer result = null;
+            for (TimestampedValue<Integer> v : vals) {
+                if (result == null || v.getValue() > result) result = v.getValue();
+            }
+            return result;
+        }
+        private Integer min(Iterable<TimestampedValue<Integer>> vals) {
+            Integer result = null;
+            for (TimestampedValue<Integer> v : vals) {
+                if (result == null || v.getValue() < result) result = v.getValue();
+            }
+            return result;
+        }
+
+    }
+
     private static class QueuedSubmission<T> {
         final Callable<T> c;
         final WrappingFuture<T> f;

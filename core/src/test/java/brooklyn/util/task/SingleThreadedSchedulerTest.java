@@ -41,12 +41,18 @@ import org.testng.annotations.Test;
 
 import brooklyn.test.Asserts;
 import brooklyn.util.collections.MutableMap;
+import brooklyn.util.task.SingleThreadedScheduler.BackingUpWarner;
+import brooklyn.util.time.Duration;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Callables;
 
 public class SingleThreadedSchedulerTest {
 
     private static final Logger log = LoggerFactory.getLogger(SingleThreadedSchedulerTest.class);
+    
+    private static final Duration TIMEOUT = Duration.THIRTY_SECONDS;
     
     private BasicExecutionManager em;
     
@@ -179,6 +185,69 @@ public class SingleThreadedSchedulerTest {
 
         latch.countDown();
         assertEquals(future.get(), (Integer)123);
+    }
+    
+    @Test
+    public void testQueueWarningsIncreaseInIncrements() throws Exception {
+        RecordingBackingUpWarner warner = new RecordingBackingUpWarner(Duration.THIRTY_SECONDS);
+
+        log.warn("Test expects warning of backlogs: 50, 100, 200, 300, 400, 500, 1000, 2000; then of 50 again");
+        for (int i = 0; i < 1001; i++) {
+            warner.onSize(i);
+        }
+        
+        warner.assertWarnings(ImmutableList.of(50, 100, 200, 300, 400, 500, 1000));
+    }
+    
+    @Test
+    public void testQueueWarningsLogsWhenBackDownAgain() throws Exception {
+        RecordingBackingUpWarner warner = new RecordingBackingUpWarner(Duration.THIRTY_SECONDS);
+
+        log.warn("Test expects warning of backlogs: 50, 100, 200, 300, 400, 500, 1000, 2000; then of 50 again");
+        for (int i = 0; i < 1001; i++) {
+            warner.onSize(i);
+        }
+        for (int i = 1000; i >= 0; i--) {
+            warner.onSize(i);
+        }
+        
+        warner.assertWarnings(ImmutableList.of(50, 100, 200, 300, 400, 500, 1000, 50));
+    }
+    
+    @Test
+    public void testQueueWarningsDoesNotLogRepeatedlyWhenBacklogFluctuatesQuickly() throws Exception {
+        RecordingBackingUpWarner warner = new RecordingBackingUpWarner(Duration.THIRTY_SECONDS);
+
+        log.warn("Test expects warning of backlogs: 50, 100, 200, 300, 400, 500, 1000, 2000; then of 50 again");
+        for (int i = 0; i <= 50; i++) {
+            warner.onSize(i);
+        }
+        for (int repeats = 0; repeats < 10; repeats++) {
+            for (int i = 51; i <= 100; i++) {
+                warner.onSize(i);
+            }
+            for (int i = 100; i >= 50; i--) {
+                warner.onSize(i);
+            }
+        }
+        
+        warner.assertWarnings(ImmutableList.of(50, 100, 50));
+    }
+    
+    public static class RecordingBackingUpWarner extends BackingUpWarner {
+        final List<Integer> warnings = Lists.newCopyOnWriteArrayList();
+        
+        public RecordingBackingUpWarner(Duration thirtySeconds) {
+            super(thirtySeconds);
+        }
+        @Override
+        protected void warn(String msg, int size) {
+            super.warn(msg, size);
+            warnings.add(size);
+        }
+        void assertWarnings(List<Integer> expected) {
+            assertEquals(warnings, expected, "warnings="+warnings+"; expected="+expected);
+        }
     }
     
     private Callable<Void> newLatchAwaiter(final CountDownLatch latch) {
