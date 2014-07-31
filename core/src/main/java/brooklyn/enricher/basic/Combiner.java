@@ -54,13 +54,13 @@ public class Combiner<T,U> extends AbstractEnricher implements SensorEventListen
 
     private static final Logger LOG = LoggerFactory.getLogger(Combiner.class);
 
-    public static ConfigKey<Function<?, ?>> TRANSFORMATION = ConfigKeys.newConfigKey(new TypeToken<Function<?, ?>>() {}, "enricher.transformation");
+    public static final ConfigKey<Function<?, ?>> TRANSFORMATION = ConfigKeys.newConfigKey(new TypeToken<Function<?, ?>>() {}, "enricher.transformation");
 
-    public static ConfigKey<Entity> PRODUCER = ConfigKeys.newConfigKey(Entity.class, "enricher.producer");
+    public static final ConfigKey<Entity> PRODUCER = ConfigKeys.newConfigKey(Entity.class, "enricher.producer");
 
-    public static ConfigKey<Set<Sensor<?>>> SOURCE_SENSORS = ConfigKeys.newConfigKey(new TypeToken<Set<Sensor<?>>>() {}, "enricher.sourceSensors");
+    public static final ConfigKey<Set<Sensor<?>>> SOURCE_SENSORS = ConfigKeys.newConfigKey(new TypeToken<Set<Sensor<?>>>() {}, "enricher.sourceSensors");
 
-    public static ConfigKey<Sensor<?>> TARGET_SENSOR = ConfigKeys.newConfigKey(new TypeToken<Sensor<?>>() {}, "enricher.targetSensor");
+    public static final ConfigKey<Sensor<?>> TARGET_SENSOR = ConfigKeys.newConfigKey(new TypeToken<Sensor<?>>() {}, "enricher.targetSensor");
 
     public static final ConfigKey<Predicate<?>> VALUE_FILTER = ConfigKeys.newConfigKey(new TypeToken<Predicate<?>>() {}, "enricher.aggregating.valueFilter");
 

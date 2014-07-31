@@ -139,7 +139,7 @@ public class QueueingSubscriptionManager extends AbstractSubscriptionManager {
         Set<SubscriptionHandle> result = new LinkedHashSet<SubscriptionHandle>();
         for (QueuedSubscription q: queuedSubscriptions) {
             if ((q.s.sensor==null || Objects.equal(q.s.sensor, sensor)) &&
-                    (q.s.producer==null || Objects.equal(q.s.producer, sensor)))
+                    (q.s.producer==null || Objects.equal(q.s.producer, source)))
                 result.add(q.s);
         }
         return result;

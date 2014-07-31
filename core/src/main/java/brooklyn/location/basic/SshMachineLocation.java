@@ -35,7 +35,6 @@ import java.io.StringReader;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.security.KeyPair;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -272,7 +271,7 @@ public class SshMachineLocation extends AbstractLocation implements MachineLocat
                 new Function<Map<String, ?>, Map<String, ?>>() {
                     @Override
                     public Map<String, ?> apply(@Nullable Map<String, ?> input) {
-                        Map<String, Object> copy = new HashMap<String, Object>(input);
+                        Map<String, Object> copy = MutableMap.copyOf(input);
                         copy.keySet().removeAll(reusableSshProperties);
                         return copy;
                     }

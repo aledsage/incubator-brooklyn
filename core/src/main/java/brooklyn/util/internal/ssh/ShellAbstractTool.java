@@ -253,7 +253,7 @@ public abstract class ShellAbstractTool implements ShellTool {
                     .add("RESULT=$?");
             if (noExtraOutput==null || !noExtraOutput)
                 cmds.add("echo Executed "+scriptPath+", result $RESULT"); 
-            if (noDeleteAfterExec!=Boolean.TRUE) {
+            if (!Boolean.TRUE.equals(noDeleteAfterExec)) {
                 // use "-f" because some systems have "rm" aliased to "rm -i"
                 // use "< /dev/null" to guarantee doesn't hang
                 cmds.add("rm -f "+scriptPath+" < /dev/null");

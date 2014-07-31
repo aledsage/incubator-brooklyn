@@ -80,6 +80,7 @@ public class HttpToolResponse implements HttpPollValue {
 
     public HttpToolResponse(int responseCode, Map<String,List<String>> headers, byte[] content,
             long startTime, long durationMillisOfFirstResponse, long durationMillisOfFullContent) {
+        // TODO set reasonPhrase; otherwise getReasonPhrase will throw NPE because response is null
         this.response = null;
         this.responseCode = responseCode;
         this.headerLists = ImmutableMap.copyOf(headers);

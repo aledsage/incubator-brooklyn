@@ -411,7 +411,7 @@ public class CustomAggregatingEnricherTest extends BrooklynAppUnitTestSupport {
     }
     
     @Test
-    public void testAppliesFilterWhenAggregatingMembersOfGroup() {
+    public void testAppliesEntityFilterWhenAggregatingMembersOfGroup() {
         BasicGroup group = app.createAndManageChild(EntitySpec.create(BasicGroup.class));
         TestEntity p1 = app.createAndManageChild(EntitySpec.create(TestEntity.class));
         TestEntity p2 = app.createAndManageChild(EntitySpec.create(TestEntity.class));
@@ -428,6 +428,32 @@ public class CustomAggregatingEnricherTest extends BrooklynAppUnitTestSupport {
                 .computingSum()
                 .fromMembers()
                 .entityFilter(Predicates.equalTo((Entity)p1))
+                .build());
+
+        EntityTestUtils.assertAttributeEqualsEventually(group, target, 1);
+        
+        group.addMember(p3);
+        EntityTestUtils.assertAttributeEqualsContinually(ImmutableMap.of("timeout", SHORT_WAIT_MS), group, target, 1);
+    }
+
+    @Test
+    public void testAppliesValueFilterWhenAggregatingMembersOfGroup() {
+        BasicGroup group = app.createAndManageChild(EntitySpec.create(BasicGroup.class));
+        TestEntity p1 = app.createAndManageChild(EntitySpec.create(TestEntity.class));
+        TestEntity p2 = app.createAndManageChild(EntitySpec.create(TestEntity.class));
+        TestEntity p3 = app.createAndManageChild(EntitySpec.create(TestEntity.class));
+        group.addMember(p1);
+        group.addMember(p2);
+        p1.setAttribute(intSensor, 1);
+        p2.setAttribute(intSensor, 2);
+        p3.setAttribute(intSensor, 4);
+        
+        group.addEnricher(Enrichers.builder()
+                .aggregating(intSensor)
+                .publishing(target)
+                .computingSum()
+                .fromMembers()
+                .valueFilter(Predicates.equalTo(1))
                 .build());
 
         EntityTestUtils.assertAttributeEqualsEventually(group, target, 1);

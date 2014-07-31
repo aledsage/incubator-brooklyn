@@ -162,14 +162,15 @@ public class PortRanges {
         }
         @Override
         public String toString() {
-            String s = "";
+            StringBuilder s = new StringBuilder();
             for (PortRange r: ranges) {
-                if (s.length()>0) s+=",";
-                s += r;
+                if (s.length()>0) s.append(",");
+                s.append(r);
             }
             return //getClass().getName()+"["+
-                s; //+"]";
+                s.toString(); //+"]";
         }
+        @Override
         public int hashCode() {
             return Objects.hashCode(ranges);
         }

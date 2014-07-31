@@ -22,6 +22,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 
 import java.net.URI;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -248,7 +249,7 @@ public class HttpFeed extends AbstractFeed {
             return Objects.equal(method, o.method) &&
                     Objects.equal(uriProvider, o.uriProvider) &&
                     Objects.equal(headers, o.headers) &&
-                    Objects.equal(body, o.body) &&
+                    (body == null || o.body == null) ? body == o.body : Arrays.equals(body, o.body) &&
                     Objects.equal(credentials, o.credentials);
         }
     }

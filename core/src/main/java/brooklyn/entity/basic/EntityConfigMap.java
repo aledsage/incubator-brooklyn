@@ -100,7 +100,7 @@ public class EntityConfigMap implements ConfigMap {
         // TODO If ask for a config value that's not in our configKeys, should we really continue with rest of method and return key.getDefaultValue?
         //      e.g. SshBasedJavaAppSetup calls setAttribute(JMX_USER), which calls getConfig(JMX_USER)
         //           but that example doesn't have a default...
-        ConfigKey<T> ownKey = entity!=null ? (ConfigKey<T>)elvis(entity.getEntityType().getConfigKey(key.getName()), key) : key;
+        ConfigKey<T> ownKey = (ConfigKey<T>)elvis(entity.getEntityType().getConfigKey(key.getName()), key);
         
         ExecutionContext exec = entity.getExecutionContext();
 

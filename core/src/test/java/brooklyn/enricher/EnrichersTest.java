@@ -39,6 +39,7 @@ import brooklyn.util.text.StringFunctions;
 
 import com.google.common.base.Function;
 import com.google.common.base.Functions;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -53,6 +54,7 @@ public class EnrichersTest extends BrooklynAppUnitTestSupport {
     public static final AttributeSensor<String> STR1 = Sensors.newStringSensor("test.str1");
     public static final AttributeSensor<String> STR2 = Sensors.newStringSensor("test.str2");
     public static final AttributeSensor<Set<Object>> SET1 = Sensors.newSensor(new TypeToken<Set<Object>>() {}, "test.set1", "set1 descr");
+    public static final AttributeSensor<Collection<Object>> COLLECTION1 = Sensors.newSensor(new TypeToken<Collection<Object>>() {}, "test.collection1", "collection1 descr");
     public static final AttributeSensor<Long> LONG1 = Sensors.newLongSensor("test.long1");
     
     private TestEntity entity;
@@ -115,6 +117,59 @@ public class EnrichersTest extends BrooklynAppUnitTestSupport {
         
         entity.setAttribute(NUM1, 2);
         EntityTestUtils.assertAttributeEqualsContinually(entity, NUM3, 126);
+    }
+    
+    
+    @Test
+    public void testCombinorFilteringBlanks() {
+        entity.addEnricher(Enrichers.builder()
+                .combining(NUM1, NUM2)
+                .publishing(COLLECTION1)
+                .computing(new Function<Collection<Integer>, Collection<Object>>() {
+                    @Override public Collection<Object> apply(Collection<Integer> input) {
+                        return MutableSet.<Object>copyOf(input);
+                    }})
+                .excludingBlank()
+                .build());
+        
+        entity.setAttribute(NUM1, 2);
+        entity.setAttribute(NUM2, null);
+        EntityTestUtils.assertAttributeEqualsEventually(entity, COLLECTION1, MutableSet.<Object>of(2));
+    }
+    
+    @Test
+    public void testCombinorFilteringValues() {
+        entity.addEnricher(Enrichers.builder()
+                .combining(NUM1, NUM2)
+                .publishing(COLLECTION1)
+                .computing(new Function<Collection<Integer>, Collection<Object>>() {
+                    @Override public Collection<Object> apply(Collection<Integer> input) {
+                        return MutableSet.<Object>copyOf(input);
+                    }})
+                .valueFilter(Predicates.equalTo(2))
+                .build());
+        
+        entity.setAttribute(NUM1, 2);
+        entity.setAttribute(NUM2, 3);
+        EntityTestUtils.assertAttributeEqualsEventually(entity, COLLECTION1, MutableSet.<Object>of(2));
+    }
+    
+    @Test
+    public void testCombinorFilteringValuesAndBlanks() {
+        entity.addEnricher(Enrichers.builder()
+                .combining(NUM1, NUM2, NUM3)
+                .publishing(COLLECTION1)
+                .computing(new Function<Collection<Integer>, Collection<Object>>() {
+                    @Override public Collection<Object> apply(Collection<Integer> input) {
+                        return MutableSet.<Object>copyOf(input);
+                    }})
+                .valueFilter(Predicates.or(Predicates.equalTo(null), Predicates.equalTo(2)))
+                .excludingBlank()
+                .build());
+        
+        entity.setAttribute(NUM1, 2);
+        entity.setAttribute(NUM2, null);
+        EntityTestUtils.assertAttributeEqualsEventually(entity, COLLECTION1, MutableSet.<Object>of(2));
     }
     
     @Test

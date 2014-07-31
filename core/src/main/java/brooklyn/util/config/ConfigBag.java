@@ -285,7 +285,9 @@ public class ConfigBag {
     }
 
     public boolean containsKey(HasConfigKey<?> key) {
-        return config.containsKey(key.getConfigKey());
+        // TODO was previously just checking contains(configKey); can we delete that check
+        // or is something inserting a ConfigKey into a map of strings?!
+        return config.containsKey(key.getConfigKey()) || config.containsKey(key.getConfigKey().getName());
     }
 
     public boolean containsKey(ConfigKey<?> key) {

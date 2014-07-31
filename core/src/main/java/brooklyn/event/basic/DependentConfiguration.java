@@ -52,6 +52,7 @@ import brooklyn.management.Task;
 import brooklyn.management.TaskAdaptable;
 import brooklyn.management.TaskFactory;
 import brooklyn.util.GroovyJavaMethods;
+import brooklyn.util.collections.MutableList;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.exceptions.CompoundRuntimeException;
 import brooklyn.util.exceptions.Exceptions;
@@ -286,7 +287,7 @@ public class DependentConfiguration {
             return transform(flags, tasks.get(0), new Function<U,T>() {
                 @Override @Nullable
                 public T apply(@Nullable U input) {
-                    return transformer.apply(ImmutableList.of(input));
+                    return transformer.apply(MutableList.of(input));
                 }
             });
         }
@@ -342,7 +343,7 @@ public class DependentConfiguration {
     
     public static <T> Task<List<T>> listAttributesWhenReady(AttributeSensor<T> sensor, Iterable<Entity> entities, Closure readiness) {
         Predicate<T> readinessPredicate = (readiness != null) ? GroovyJavaMethods.predicateFromClosure(readiness) : GroovyJavaMethods.truthPredicate();
-        return listAttributesWhenReady(sensor, entities, readiness);
+        return listAttributesWhenReady(sensor, entities, readinessPredicate);
     }
     
     /** returns a task for parallel execution returning a list of values of the given sensor list on the given entity, 

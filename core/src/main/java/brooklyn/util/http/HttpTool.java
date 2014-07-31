@@ -169,7 +169,7 @@ public class HttpTool {
             if (reuseStrategy != null) {
                 httpClient.setReuseStrategy(reuseStrategy);
             }
-            if (https == Boolean.TRUE || (uri!=null && uri.toString().startsWith("https:"))) {
+            if (Boolean.TRUE.equals(https) || (uri!=null && uri.toString().startsWith("https:"))) {
                 try {
                     if (port == null) {
                         port = (uri != null && uri.getPort() >= 0) ? uri.getPort() : 443;

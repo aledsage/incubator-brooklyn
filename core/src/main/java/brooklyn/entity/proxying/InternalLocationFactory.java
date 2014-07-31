@@ -65,7 +65,7 @@ public class InternalLocationFactory {
         private static ThreadLocal<Boolean> constructing = new ThreadLocal<Boolean>();
         
         public static boolean isConstructing() {
-            return (constructing.get() == Boolean.TRUE);
+            return (Boolean.TRUE.equals(constructing.get()));
         }
         
         static void reset() {

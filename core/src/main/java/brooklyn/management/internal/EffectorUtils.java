@@ -106,7 +106,7 @@ public class EffectorUtils {
                 //finally, default values are used to make up for missing parameters
                 newArgs.put(it.getName(), ((BasicParameterType)it).getDefaultValue());
             } else {
-                throw new IllegalArgumentException("Invalid arguments (count mismatch) for effector "+eff+": "+args);
+                throw new IllegalArgumentException("Invalid arguments (count mismatch) for effector "+eff+": "+Arrays.toString(args));
             }
 
             newArgsNeeded--;
@@ -277,8 +277,9 @@ public class EffectorUtils {
     /** @deprecated since 0.7.0, not used */
     @Deprecated
     public static Effector<?> findEffectorMatching(Entity entity, Method method) {
+        String methodName = method.getName();
         effector: for (Effector<?> effector : entity.getEntityType().getEffectors()) {
-            if (!effector.getName().equals(entity)) continue;
+            if (!effector.getName().equals(methodName)) continue;
             if (effector.getParameters().size() != method.getParameterTypes().length) continue;
             for (int i = 0; i < effector.getParameters().size(); i++) {
                 if (effector.getParameters().get(i).getParameterClass() != method.getParameterTypes()[i]) continue effector; 

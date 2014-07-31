@@ -38,7 +38,7 @@ public class FilenameProducers {
     public static Function<DownloadRequirement, String> fromFilenameProperty() {
         return new Function<DownloadRequirement, String>() {
             @Override public String apply(@Nullable DownloadRequirement req) {
-                Object filename = req.getProperties().get("filename");
+                Object filename = (req == null) ? null : req.getProperties().get("filename");
                 return (filename != null) ? filename.toString() : null;
             }
         };

@@ -73,7 +73,7 @@ public class ArchiveUtils {
         /**
          * Zip format archives used by Java.
          */
-        public static Set<ArchiveType> ZIP_ARCHIVES = EnumSet.of(ArchiveType.ZIP, ArchiveType.JAR, ArchiveType.WAR, ArchiveType.EAR);
+        public static final Set<ArchiveType> ZIP_ARCHIVES = EnumSet.of(ArchiveType.ZIP, ArchiveType.JAR, ArchiveType.WAR, ArchiveType.EAR);
 
         public static ArchiveUtils.ArchiveType of(String filename) {
             if (filename == null) return null;

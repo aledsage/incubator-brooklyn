@@ -105,14 +105,16 @@ public abstract class CatalogItemDtoAbstract<T,SpecT> implements CatalogItem<T,S
 
     transient CatalogXmlSerializer serializer;
     
+    @Override
     public String toXmlString() {
-        if (serializer==null) loadSerializer();
-        return serializer.toString(this);
+        return loadSerializer().toString(this);
     }
     
-    private synchronized void loadSerializer() {
-        if (serializer==null) 
+    private synchronized CatalogXmlSerializer loadSerializer() {
+        if (serializer==null) {
             serializer = new CatalogXmlSerializer();
+        }
+        return serializer;
     }
 
     public BrooklynClassLoadingContext newClassLoadingContext(final ManagementContext mgmt) {

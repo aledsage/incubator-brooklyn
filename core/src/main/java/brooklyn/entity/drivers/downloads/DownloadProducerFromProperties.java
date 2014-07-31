@@ -179,7 +179,7 @@ public class DownloadProducerFromProperties implements Function<DownloadRequirem
                 String urlForAddon = foraddon.get("url");
                 if (urlForAddon == null) urlForAddon = urlForEntity;
                 String fallbackUrlForAddon = foraddon.get("fallbackurl");
-                if (fallbackUrlForEntity == null) fallbackUrlForAddon = fallbackUrlForEntity;
+                if (fallbackUrlForAddon == null) fallbackUrlForAddon = fallbackUrlForEntity;
                 
                 result.add(new EntityAddonSpecificRule(entityType, addonName, urlForAddon, fallbackUrlForAddon));
             }

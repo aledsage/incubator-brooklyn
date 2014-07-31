@@ -102,7 +102,7 @@ public abstract class AbstractApplication extends AbstractEntity implements Star
             // and so should throw but don't want to break things (yet)
             if (getParent()==null) {
                 log.warn("Setting application of "+this+" to "+app+", but "+this+" is not parented");
-            } else if (getParent().getApplicationId().equals(app.getParent())) {
+            } else if (getParent().getApplicationId().equals(app.getApplicationId())) {
                 log.warn("Setting application of "+this+" to "+app+", but parent "+getParent()+" has different app "+getParent().getApplication());
             }
         }

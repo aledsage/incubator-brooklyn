@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 import brooklyn.config.ConfigKey;
 import brooklyn.config.ConfigKey.HasConfigKey;
 import brooklyn.policy.EntityAdjunct;
-import brooklyn.policy.PolicyType;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Objects;
@@ -94,8 +93,8 @@ public class AdjunctType implements Serializable {
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
-        if (!(obj instanceof PolicyType)) return false;
-        PolicyType o = (PolicyType) obj;
+        if (!(obj instanceof AdjunctType)) return false;
+        AdjunctType o = (AdjunctType) obj;
         
         return Objects.equal(name, o.getName()) && Objects.equal(getConfigKeys(), o.getConfigKeys());
     }
@@ -147,7 +146,8 @@ public class AdjunctType implements Serializable {
                 } else if (definitiveField != null) {
                     if (LOG.isDebugEnabled()) LOG.debug("multiple definitions for config key {} on {}; preferring that in sub-class: {} to {}", new Object[] {
                             k.getName(), optionalInstance!=null ? optionalInstance : clazz, alternativeField, f});
-                } else if (definitiveField == null) {
+                } else {
+                    // definitiveField == null
                     LOG.warn("multiple definitions for config key {} on {}; preferring {} to {}", new Object[] {
                             k.getName(), optionalInstance!=null ? optionalInstance : clazz, alternativeField, f});
                 }

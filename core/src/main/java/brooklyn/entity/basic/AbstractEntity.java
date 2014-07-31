@@ -413,7 +413,7 @@ public abstract class AbstractEntity implements EntityLocal, EntityInternal {
         return this;
     }
     public <T> AbstractEntity configure(HasConfigKey<T> key, String value) {
-        setConfig((ConfigKey)key, value);
+        setConfig((HasConfigKey)key, value);
         return this;
     }
 
@@ -708,7 +708,7 @@ public abstract class AbstractEntity implements EntityLocal, EntityInternal {
     /** @deprecated since 0.4.0 should not be needed / leaked outwith brooklyn internals / mgmt support? */
     protected synchronized void setApplication(Application app) {
         if (application != null) {
-            if (application.getId() != app.getId()) {
+            if (!application.getId().equals(app.getId())) {
                 throw new IllegalStateException("Cannot change application of entity (attempted for "+this+" from "+getApplication()+" to "+app);
             }
         }

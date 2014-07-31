@@ -396,7 +396,7 @@ public class BasicBrooklynCatalog implements BrooklynCatalog {
         return new Function<CatalogItemDo<T,SpecT>, CatalogItem<T,SpecT>>() {
             @Override
             public CatalogItem<T,SpecT> apply(@Nullable CatalogItemDo<T,SpecT> item) {
-                return item.getDto();
+                return (item == null) ? null : (CatalogItem<T,SpecT>) item.getDto();
             }
         };
     }
@@ -404,13 +404,14 @@ public class BasicBrooklynCatalog implements BrooklynCatalog {
     transient CatalogXmlSerializer serializer;
     
     public String toXmlString() {
-        if (serializer==null) loadSerializer();
-        return serializer.toString(catalog.dto);
+        return loadSerializer().toString(catalog.dto);
     }
     
-    private synchronized void loadSerializer() {
-        if (serializer==null) 
+    private synchronized CatalogXmlSerializer loadSerializer() {
+        if (serializer==null) {
             serializer = new CatalogXmlSerializer();
+        }
+        return serializer;
     }
 
 }

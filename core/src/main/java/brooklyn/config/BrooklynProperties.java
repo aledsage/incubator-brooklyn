@@ -44,6 +44,7 @@ import brooklyn.util.config.ConfigBag;
 import brooklyn.util.flags.TypeCoercions;
 import brooklyn.util.guava.Maybe;
 import brooklyn.util.os.Os;
+import brooklyn.util.stream.Streams;
 
 import com.google.common.annotations.Beta;
 import com.google.common.base.Objects;
@@ -227,10 +228,14 @@ public class BrooklynProperties extends LinkedHashMap implements StringConfigMap
             LOG.warn("Unable to find file '"+f.getAbsolutePath()+"' when loading properties; ignoring");
             return this;
         } else {
+            FileInputStream fis = null;
             try {
-                return addFrom(new FileInputStream(f));
+                fis = new FileInputStream(f);
+                return addFrom(fis);
             } catch (FileNotFoundException e) {
                 throw Throwables.propagate(e);
+            } finally {
+                Streams.closeQuietly(fis);
             }
         }
     }
@@ -261,7 +266,7 @@ public class BrooklynProperties extends LinkedHashMap implements StringConfigMap
      * if property not set, does nothing */
     public BrooklynProperties addFromUrlProperty(String urlProperty) {
         String url = (String) get(urlProperty);
-        if (url==null) addFromUrl(url);
+        if (url != null) addFromUrl(url);
         return this;
     }
 
@@ -307,7 +312,7 @@ public class BrooklynProperties extends LinkedHashMap implements StringConfigMap
         }
         if (flags.get("warnIfNone")!=null && !Boolean.FALSE.equals(flags.get("warnIfNone"))) {
             if (Boolean.TRUE.equals(flags.get("warnIfNone")))
-                LOG.warn("Unable to find Brooklyn property "+keys);
+                LOG.warn("Unable to find Brooklyn property "+Arrays.toString(keys));
             else
                 LOG.warn(""+flags.get("warnIfNone"));
         }

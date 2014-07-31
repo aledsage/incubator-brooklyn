@@ -309,7 +309,7 @@ public class LocalEntityManager implements EntityManagerInternal {
                     break;
                 rootUnmanaged = candidateUnmanagedParent;
             }
-            if (context == Startable.START.getName())
+            if (Startable.START.getName().equals(context))
                 log.info("Activating local management for {} on start", rootUnmanaged);
             else
                 log.warn("Activating local management for {} due to effector invocation on {}: {}", new Object[]{rootUnmanaged, entity, context});

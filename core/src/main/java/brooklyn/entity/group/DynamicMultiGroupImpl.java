@@ -54,7 +54,7 @@ public class DynamicMultiGroupImpl extends DynamicGroupImpl implements DynamicMu
         return new Function<Entity, String>() {
             @Override
             public String apply(@Nullable Entity input) {
-                Object value = input.getAttribute(sensor);
+                Object value = (input == null) ? null : input.getAttribute(sensor);
                 if (value == null) {
                     return defaultValue;
                 } else {

@@ -43,6 +43,7 @@ import brooklyn.util.text.Strings;
 import com.google.common.base.Function;
 import com.google.common.base.Objects;
 import com.google.common.base.Predicate;
+import com.google.common.base.Predicates;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Iterables;
@@ -108,7 +109,7 @@ public class Enrichers {
         protected Boolean excludingBlank;
         protected ImmutableSet<Entity> fromHardcodedProducers;
         protected Predicate<? super Entity> entityFilter;
-        protected Predicate<Object> valueFilter;
+        protected Predicate<? super S> valueFilter;
         protected Object defaultValueForUnreportedSensors;
         protected Object valueToReportIfNoSensors;
         
@@ -172,22 +173,33 @@ public class Enrichers {
             this.entityFilter = val;
             return self();
         }
+        public B valueFilter(Predicate<? super S> val) {
+            this.valueFilter = val;
+            return self();
+        }
         public B excludingBlank() {
             this.excludingBlank = true;
             return self();
         }
         public EnricherSpec<?> build() {
-            Predicate<Object> valueFilter;
+            Predicate<Object> blanksFilter;
             if (Boolean.TRUE.equals(excludingBlank)) {
-                valueFilter = new Predicate<Object>() {
+                blanksFilter = new Predicate<Object>() {
                     @Override public boolean apply(Object input) {
                         return (input != null) &&
                                 ((input instanceof CharSequence) ? Strings.isNonBlank((CharSequence)input) : true);
                     }
                 };
             } else {
-                valueFilter = null;
+                blanksFilter = null;
             }
+            Predicate<Object> combinedValueFilter = null;
+            if (valueFilter != null || blanksFilter != null) {
+                combinedValueFilter = Predicates.and(
+                        (valueFilter == null) ? Predicates.alwaysTrue() : (Predicate)valueFilter,
+                        (blanksFilter == null) ? Predicates.alwaysTrue() : blanksFilter);
+            }
+
             // FIXME excludingBlank; use valueFilter? exclude means ignored entirely or substituted for defaultMemberValue?
             return EnricherSpec.create(Aggregator.class)
                     .configure(MutableMap.builder()
@@ -199,7 +211,7 @@ public class Enrichers {
                             .putIfNotNull(Aggregator.TRANSFORMATION, computing)
                             .putIfNotNull(Aggregator.FROM_HARDCODED_PRODUCERS, fromHardcodedProducers)
                             .putIfNotNull(Aggregator.ENTITY_FILTER, entityFilter)
-                            .putIfNotNull(Aggregator.VALUE_FILTER, valueFilter)
+                            .putIfNotNull(Aggregator.VALUE_FILTER, combinedValueFilter)
                             .putIfNotNull(Aggregator.DEFAULT_MEMBER_VALUE, defaultValueForUnreportedSensors)
                             .build());
         }
@@ -231,7 +243,7 @@ public class Enrichers {
         protected Function<? super Collection<S>, ? extends T> computing;
         protected Boolean excludingBlank;
         protected Object valueToReportIfNoSensors;
-        protected Predicate<Object> valueFilter;
+        protected Predicate<? super S> valueFilter;
 
         // For summing/averaging
         protected Object defaultValueForUnreportedSensors;
@@ -282,18 +294,40 @@ public class Enrichers {
             this.valueToReportIfNoSensors = val;
             return self();
         }
+        public B valueFilter(Predicate<? super S> val) {
+            this.valueFilter = val;
+            return self();
+        }
         public B excludingBlank() {
             this.excludingBlank = true;
             return self();
         }
         public EnricherSpec<?> build() {
+            Predicate<Object> blanksFilter;
+            if (Boolean.TRUE.equals(excludingBlank)) {
+                blanksFilter = new Predicate<Object>() {
+                    @Override public boolean apply(Object input) {
+                        return (input != null) &&
+                                ((input instanceof CharSequence) ? Strings.isNonBlank((CharSequence)input) : true);
+                    }
+                };
+            } else {
+                blanksFilter = null;
+            }
+            Predicate<Object> combinedValueFilter = null;
+            if (valueFilter != null || blanksFilter != null) {
+                combinedValueFilter = Predicates.and(
+                        (valueFilter == null) ? Predicates.alwaysTrue() : (Predicate)valueFilter,
+                        (blanksFilter == null) ? Predicates.alwaysTrue() : blanksFilter);
+            }
+
             return EnricherSpec.create(Combiner.class)
                     .configure(MutableMap.builder()
                             .putIfNotNull(Combiner.PRODUCER, fromEntity)
                             .put(Combiner.TARGET_SENSOR, publishing)
                             .put(Combiner.SOURCE_SENSORS, combining)
                             .putIfNotNull(Combiner.TRANSFORMATION, computing)
-                            .putIfNotNull(Combiner.VALUE_FILTER, valueFilter)
+                            .putIfNotNull(Combiner.VALUE_FILTER, combinedValueFilter)
                             .build());
         }
         
