@@ -40,6 +40,80 @@ public class PortRanges {
     public static final int MAX_PORT = 65535;
     public static final PortRange ANY_HIGH_PORT = new LinearPortRange(1024, MAX_PORT);
     
+    static {
+        init();
+    }
+
+    private static AtomicBoolean initialized = new AtomicBoolean(false); 
+    /** performs the language extensions required for this project */
+    @SuppressWarnings("rawtypes")
+    public static void init() {
+        if (initialized.get()) return;
+        synchronized (initialized) {
+            if (initialized.get()) return;
+            TypeCoercions.registerAdapter(Integer.class, PortRange.class, new Function<Integer,PortRange>() {
+                public PortRange apply(Integer x) { return fromInteger(x); }
+            });
+            TypeCoercions.registerAdapter(String.class, PortRange.class, new Function<String,PortRange>() {
+                public PortRange apply(String x) { return fromString(x); }
+            });
+            TypeCoercions.registerAdapter(Collection.class, PortRange.class, new Function<Collection,PortRange>() {
+                public PortRange apply(Collection x) { return fromCollection(x); }
+            });
+            initialized.set(true);
+        }
+    }
+    
+    public static PortRange fromInteger(int x) {
+        return new SinglePort(x);
+    }
+    
+    public static PortRange between(int lower, int upper) {
+        return new LinearPortRange(lower, upper);
+    }
+    
+    public static PortRange fromCollection(Collection<?> c) {
+        List<PortRange> l = new ArrayList<PortRange>();
+        for (Object o: c) {
+            if (o instanceof Integer) l.add(fromInteger((Integer)o));
+            else if (o instanceof String) l.add(fromString((String)o));
+            else if (o instanceof Collection) l.add(fromCollection((Collection<?>)o));
+            else l.add(TypeCoercions.coerce(o, PortRange.class));
+        }
+        return new AggregatePortRange(l);
+    }
+
+    /** parses a string representation of ports, as "80,8080,8000,8080-8099" */
+    public static PortRange fromString(String s) {
+        List<PortRange> l = new ArrayList<PortRange>();
+        for (String si: s.split(",")) {
+            si = si.trim();
+            int start, end;
+            if (si.endsWith("+")) {
+                String si2 = si.substring(0, si.length()-1).trim();
+                start = Integer.parseInt(si2);
+                end = MAX_PORT;
+            } else if (si.indexOf('-')>0) {
+                int v = si.indexOf('-');
+                start = Integer.parseInt(si.substring(0, v).trim());
+                end = Integer.parseInt(si.substring(v+1).trim());
+            } else if (si.length()==0) {
+                //nothing, ie empty range, just continue
+                continue;
+            } else {
+                //should be number on its own
+                l.add(new SinglePort(Integer.parseInt(si)));
+                continue;
+            }
+            l.add(new LinearPortRange(start, end));
+        }
+        if (l.size() == 1) {
+            return l.get(0);
+        } else {
+            return new AggregatePortRange(l);
+        }
+    }
+
     public static class SinglePort implements PortRange, Serializable {
 		private static final long serialVersionUID = 7446781416534230401L;
 		
@@ -178,79 +252,4 @@ public class PortRanges {
             return (obj instanceof AggregatePortRange) && ranges.equals(((AggregatePortRange)obj).ranges);
         }
     }
-
-    public static PortRange fromInteger(int x) {
-        return new SinglePort(x);
-    }
-    
-    public static PortRange between(int lower, int upper) {
-        return new LinearPortRange(lower, upper);
-    }
-    
-    public static PortRange fromCollection(Collection<?> c) {
-        List<PortRange> l = new ArrayList<PortRange>();
-        for (Object o: c) {
-            if (o instanceof Integer) l.add(fromInteger((Integer)o));
-            else if (o instanceof String) l.add(fromString((String)o));
-            else if (o instanceof Collection) l.add(fromCollection((Collection<?>)o));
-            else l.add(TypeCoercions.coerce(o, PortRange.class));
-        }
-        return new AggregatePortRange(l);
-    }
-
-    /** parses a string representation of ports, as "80,8080,8000,8080-8099" */
-    public static PortRange fromString(String s) {
-        List<PortRange> l = new ArrayList<PortRange>();
-        for (String si: s.split(",")) {
-            si = si.trim();
-            int start, end;
-            if (si.endsWith("+")) {
-                String si2 = si.substring(0, si.length()-1).trim();
-                start = Integer.parseInt(si2);
-                end = MAX_PORT;
-            } else if (si.indexOf('-')>0) {
-                int v = si.indexOf('-');
-                start = Integer.parseInt(si.substring(0, v).trim());
-                end = Integer.parseInt(si.substring(v+1).trim());
-            } else if (si.length()==0) {
-                //nothing, ie empty range, just continue
-                continue;
-            } else {
-                //should be number on its own
-                l.add(new SinglePort(Integer.parseInt(si)));
-                continue;
-            }
-            l.add(new LinearPortRange(start, end));
-        }
-        if (l.size() == 1) {
-            return l.get(0);
-        } else {
-            return new AggregatePortRange(l);
-        }
-    }
-
-    private static AtomicBoolean initialized = new AtomicBoolean(false); 
-    /** performs the language extensions required for this project */
-    @SuppressWarnings("rawtypes")
-    public static void init() {
-        if (initialized.get()) return;
-        synchronized (initialized) {
-            if (initialized.get()) return;
-            TypeCoercions.registerAdapter(Integer.class, PortRange.class, new Function<Integer,PortRange>() {
-                public PortRange apply(Integer x) { return fromInteger(x); }
-            });
-            TypeCoercions.registerAdapter(String.class, PortRange.class, new Function<String,PortRange>() {
-                public PortRange apply(String x) { return fromString(x); }
-            });
-            TypeCoercions.registerAdapter(Collection.class, PortRange.class, new Function<Collection,PortRange>() {
-                public PortRange apply(Collection x) { return fromCollection(x); }
-            });
-            initialized.set(true);
-        }
-    }
-    
-    static {
-        init();
-    }
-    
 }
