@@ -97,8 +97,8 @@ public class SetFromFlagTest {
     
     @Test
     public void testSetFromFlagCoercesStringValueToPortRange() {
-        MyEntity entity = new MyEntity(portRange1:"1-3")
-        assertEquals(entity.portRange1, new PortRanges.LinearPortRange(1, 3))
+        MyEntity entity = new MyEntity(portRange1:"1-3");
+        assertEquals(entity.portRange1, PortRanges.fromString("1-3"));
     }
     
     @Test

@@ -51,7 +51,6 @@ import brooklyn.location.LocationSpec;
 import brooklyn.location.MachineDetails;
 import brooklyn.location.MachineLocation;
 import brooklyn.location.PortRange;
-import brooklyn.location.basic.PortRanges.LinearPortRange;
 import brooklyn.management.ManagementContext;
 import brooklyn.test.Asserts;
 import brooklyn.test.entity.LocalManagementContextForTests;
@@ -289,17 +288,17 @@ public class SshMachineLocationTest {
     @Test
     public void obtainPortInRangeGivesBackRequiredPortOnlyIfAvailable() {
         int port = 2345;
-        assertEquals(host.obtainPort(new LinearPortRange(port, port)), port);
-        assertEquals(host.obtainPort(new LinearPortRange(port, port)), -1);
+        assertEquals(host.obtainPort(PortRanges.fromInteger(port)), port);
+        assertEquals(host.obtainPort(PortRanges.fromInteger(port)), -1);
         host.releasePort(port);
-        assertEquals(host.obtainPort(new LinearPortRange(port, port)), port);
+        assertEquals(host.obtainPort(PortRanges.fromInteger(port)), port);
     }
     
     @Test
     public void obtainPortInWideRange() {
         int lowerPort = 2345;
         int upperPort = 2350;
-        PortRange range = new LinearPortRange(lowerPort, upperPort);
+        PortRange range = PortRanges.between(lowerPort, upperPort);
         for (int i = lowerPort; i <= upperPort; i++) {
             assertEquals(host.obtainPort(range), i);
         }

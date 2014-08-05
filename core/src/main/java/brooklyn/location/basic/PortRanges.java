@@ -183,6 +183,10 @@ public class PortRanges {
         return new SinglePort(x);
     }
     
+    public static PortRange between(int lower, int upper) {
+        return new LinearPortRange(lower, upper);
+    }
+    
     public static PortRange fromCollection(Collection<?> c) {
         List<PortRange> l = new ArrayList<PortRange>();
         for (Object o: c) {
