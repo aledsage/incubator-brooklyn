@@ -64,8 +64,6 @@ import brooklyn.entity.rebind.persister.jclouds.JcloudsBlobStoreBasedObjectStore
 import brooklyn.entity.trait.Startable;
 import brooklyn.launcher.config.StopWhichAppsOnShutdown;
 import brooklyn.location.Location;
-import brooklyn.location.PortRange;
-import brooklyn.location.basic.PortRanges;
 import brooklyn.management.ManagementContext;
 import brooklyn.management.ha.HighAvailabilityManager;
 import brooklyn.management.ha.HighAvailabilityManagerImpl;
@@ -84,6 +82,8 @@ import brooklyn.util.guava.Maybe;
 import brooklyn.util.io.FileUtil;
 import brooklyn.util.net.Networking;
 import brooklyn.util.os.Os;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 import brooklyn.util.stream.Streams;
 import brooklyn.util.text.Strings;
 import brooklyn.util.time.Duration;

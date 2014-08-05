@@ -28,9 +28,9 @@ import brooklyn.event.AttributeSensor;
 import brooklyn.event.basic.BasicAttributeSensorAndConfigKey;
 import brooklyn.event.basic.BasicConfigKey;
 import brooklyn.event.basic.PortAttributeSensorAndConfigKey;
-import brooklyn.location.PortRange;
-import brooklyn.location.basic.PortRanges;
 import brooklyn.util.flags.SetFromFlag;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 
 public interface UsesJmx extends UsesJava {
 

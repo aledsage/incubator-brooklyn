@@ -33,9 +33,9 @@ import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.entity.salt.SaltConfig;
 import brooklyn.entity.salt.SaltLiveTestSupport;
 import brooklyn.entity.software.SshEffectorTasks;
-import brooklyn.location.PortRange;
-import brooklyn.location.basic.PortRanges;
 import brooklyn.location.basic.SshMachineLocation;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 import brooklyn.util.task.system.ProcessTaskWrapper;
 import brooklyn.util.time.Duration;
 

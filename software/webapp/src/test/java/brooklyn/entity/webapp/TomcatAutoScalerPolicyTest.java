@@ -34,14 +34,14 @@ import brooklyn.entity.proxying.EntitySpec;
 import brooklyn.entity.webapp.tomcat.TomcatServer;
 import brooklyn.entity.webapp.tomcat.TomcatServerImpl;
 import brooklyn.location.LocationSpec;
-import brooklyn.location.PortRange;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
-import brooklyn.location.basic.PortRanges;
 import brooklyn.management.ManagementContext;
 import brooklyn.policy.autoscaling.AutoScalerPolicy;
 import brooklyn.test.Asserts;
 import brooklyn.test.entity.TestApplication;
 import brooklyn.util.collections.MutableMap;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Iterables;

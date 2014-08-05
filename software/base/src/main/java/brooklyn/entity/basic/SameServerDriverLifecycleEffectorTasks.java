@@ -25,22 +25,22 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.base.Supplier;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.Entity;
 import brooklyn.entity.software.MachineLifecycleEffectorTasks;
 import brooklyn.entity.trait.StartableMethods;
 import brooklyn.location.MachineLocation;
 import brooklyn.location.MachineProvisioningLocation;
-import brooklyn.location.PortRange;
 import brooklyn.location.basic.LocationConfigKeys;
 import brooklyn.management.TaskAdaptable;
 import brooklyn.util.collections.MutableSet;
+import brooklyn.util.net.PortRange;
 import brooklyn.util.task.DynamicTasks;
+
+import com.google.common.base.Supplier;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 public class SameServerDriverLifecycleEffectorTasks extends MachineLifecycleEffectorTasks {
 

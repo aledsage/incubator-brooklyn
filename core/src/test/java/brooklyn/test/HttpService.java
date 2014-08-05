@@ -38,11 +38,11 @@ import org.eclipse.jetty.webapp.WebAppContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import brooklyn.location.PortRange;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
 import brooklyn.util.ResourceUtils;
 import brooklyn.util.crypto.SecureKeys;
 import brooklyn.util.javalang.Threads;
+import brooklyn.util.net.PortRange;
 import brooklyn.util.os.Os;
 
 import com.google.common.base.Optional;

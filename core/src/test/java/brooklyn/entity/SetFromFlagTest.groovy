@@ -20,14 +20,12 @@ package brooklyn.entity;
 
 import static org.testng.Assert.*
 
-import java.util.Map
-
 import org.testng.annotations.Test
 
 import brooklyn.entity.basic.AbstractEntity
-import brooklyn.location.PortRange
-import brooklyn.location.basic.PortRanges;
 import brooklyn.util.flags.SetFromFlag
+import brooklyn.util.net.PortRange
+import brooklyn.util.net.PortRanges
 
 public class SetFromFlagTest {
 

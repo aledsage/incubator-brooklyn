@@ -34,11 +34,11 @@ import org.testng.annotations.Test;
 import brooklyn.entity.basic.ApplicationBuilder;
 import brooklyn.entity.basic.Entities;
 import brooklyn.entity.proxying.EntitySpec;
-import brooklyn.location.PortRange;
 import brooklyn.location.basic.LocalhostMachineProvisioningLocation;
-import brooklyn.location.basic.PortRanges;
 import brooklyn.test.entity.TestApplication;
 import brooklyn.util.net.Networking;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 
 import com.google.common.collect.ImmutableList;
 
