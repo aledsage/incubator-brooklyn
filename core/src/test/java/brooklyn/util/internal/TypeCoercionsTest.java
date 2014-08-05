@@ -22,6 +22,7 @@ import static org.testng.Assert.assertEquals;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,8 +34,11 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import brooklyn.entity.basic.Lifecycle;
+import brooklyn.util.collections.MutableList;
 import brooklyn.util.flags.ClassCoercionException;
 import brooklyn.util.flags.TypeCoercions;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 import brooklyn.util.text.StringPredicates;
 
 import com.google.common.base.Predicate;
@@ -269,6 +273,18 @@ public class TypeCoercionsTest {
         assertEquals(TypeCoercions.coerce("1", Number.class), (Number) Double.valueOf(1));
         assertEquals(TypeCoercions.coerce("1.0", Number.class), (Number) Double.valueOf(1.0));
     }
+    
+    @Test
+    public void testCoercePortRangeString() {
+        PortRange r = TypeCoercions.coerce("80", PortRange.class);
+        assertContents(r, 80);
+    }
+
+    @Test
+    public void testCoercePortRangeInt() {
+        PortRange r = TypeCoercions.coerce(80, PortRange.class);
+        assertContents(r, 80);
+    }
 
     @Test(expectedExceptions = ClassCoercionException.class)
     public void testInvalidCoercionThrowsClassCoercionException() {
@@ -291,5 +307,19 @@ public class TypeCoercionsTest {
             return result;
         }
     }
-
+    
+    // TODO Duplicated from PortRangesTest
+    private static <T> void assertContents(Iterable<T> actual, T ...expected) {
+        Iterator<T> i = actual.iterator();
+        int c = 0;
+        while (i.hasNext()) {
+            if (expected.length<=c) {
+                Assert.fail("Iterable contained more than the "+c+" expected elements");
+            }
+            Assert.assertEquals(i.next(), expected[c++]);
+        }
+        if (expected.length>c) {
+            Assert.fail("Iterable contained only "+c+" elements, "+expected.length+" expected");
+        }
+    }
 }

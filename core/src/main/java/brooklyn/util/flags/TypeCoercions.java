@@ -56,6 +56,8 @@ import brooklyn.util.guava.Maybe;
 import brooklyn.util.javalang.Enums;
 import brooklyn.util.net.Cidr;
 import brooklyn.util.net.Networking;
+import brooklyn.util.net.PortRange;
+import brooklyn.util.net.PortRanges;
 import brooklyn.util.net.UserAndHostAndPort;
 import brooklyn.util.text.StringEscapes.JavaStringEscapes;
 import brooklyn.util.text.Strings;
@@ -617,6 +619,42 @@ public class TypeCoercions {
             @Override
             public BigInteger apply(Integer input) {
                 return BigInteger.valueOf(input);
+            }
+        });
+        registerAdapter(Integer.class, PortRange.class, new Function<Integer,PortRange>() {
+            @Override
+            public PortRange apply(Integer x) {
+                return PortRanges.fromInteger(x);
+            }
+        });
+        registerAdapter(String.class, PortRange.class, new Function<String,PortRange>() {
+            @Override
+            public PortRange apply(String x) {
+                return PortRanges.fromString(x);
+            }
+        });
+        registerAdapter(Collection.class, PortRange.class, new Function<Collection,PortRange>() {
+            @Override
+            public PortRange apply(Collection x) {
+                return PortRanges.fromCollection(x);
+            }
+        });
+        registerAdapter(Integer.class, brooklyn.location.PortRange.class, new Function<Integer,brooklyn.location.PortRange>() {
+            @Override
+            public brooklyn.location.PortRange apply(Integer x) {
+                return brooklyn.location.basic.PortRanges.fromInteger(x);
+            }
+        });
+        registerAdapter(String.class, brooklyn.location.PortRange.class, new Function<String,brooklyn.location.PortRange>() {
+            @Override
+            public brooklyn.location.PortRange apply(String x) {
+                return brooklyn.location.basic.PortRanges.fromString(x);
+            }
+        });
+        registerAdapter(Collection.class, brooklyn.location.PortRange.class, new Function<Collection,brooklyn.location.PortRange>() {
+            @Override
+            public brooklyn.location.PortRange apply(Collection x) {
+                return brooklyn.location.basic.PortRanges.fromCollection(x);
             }
         });
         registerAdapter(String.class, AttributeSensor.class, new Function<String,AttributeSensor>() {

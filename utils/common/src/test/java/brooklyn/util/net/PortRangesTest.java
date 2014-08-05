@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package brooklyn.location.basic;
+package brooklyn.util.net;
 
 import java.util.Iterator;
 
@@ -24,9 +24,6 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.google.common.collect.ImmutableList;
-
-import brooklyn.location.PortRange;
-import brooklyn.util.flags.TypeCoercions;
 
 public class PortRangesTest {
 
@@ -64,20 +61,6 @@ public class PortRangesTest {
         Assert.assertEquals(r.toString(), "80,8080,8000,8080-8099");
     }
     
-    @Test
-    public void testCoercion() {
-        PortRanges.init();
-        PortRange r = TypeCoercions.coerce("80", PortRange.class);
-        assertContents(r, 80);
-    }
-
-    @Test
-    public void testCoercionInt() {
-        PortRanges.init();
-        PortRange r = TypeCoercions.coerce(80, PortRange.class);
-        assertContents(r, 80);
-    }
-
     private static <T> void assertContents(Iterable<T> actual, T ...expected) {
         Iterator<T> i = actual.iterator();
         int c = 0;
