@@ -18,12 +18,14 @@
  */
 package brooklyn.entity.nosql.couchbase;
 
+import brooklyn.catalog.Catalog;
 import brooklyn.entity.annotation.Effector;
 import brooklyn.entity.annotation.EffectorParam;
 import brooklyn.entity.basic.MethodEffector;
 import brooklyn.entity.basic.SoftwareProcess;
 import brooklyn.entity.proxying.ImplementedBy;
 
+@Catalog(name="Couchbase Load Generator", description="A Couchbase load generator, using pillowfight")
 @ImplementedBy(CouchbaseLoadGeneratorImpl.class)
 public interface CouchbaseLoadGenerator extends SoftwareProcess {
     public static final MethodEffector<Void> PILLOWFIGHT = new MethodEffector<Void>(CouchbaseLoadGenerator.class, "pillowfight");

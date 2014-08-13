@@ -18,6 +18,7 @@
  */
 package brooklyn.entity.basic;
 
+import brooklyn.catalog.Catalog;
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.proxying.ImplementedBy;
 import brooklyn.event.basic.BasicAttributeSensorAndConfigKey;
@@ -46,6 +47,7 @@ import brooklyn.event.basic.BasicAttributeSensorAndConfigKey;
  * <li> a custom {@link #STOP_COMMAND}
  * <li> specify which {@link SoftwareProcess#PID_FILE} to use
  */
+@Catalog(name="Vanilla Software Process", description="A software process configured with scripts, e.g. for launch, check-running and stop")
 @ImplementedBy(VanillaSoftwareProcessImpl.class)
 public interface VanillaSoftwareProcess extends SoftwareProcess {
     BasicAttributeSensorAndConfigKey<String> DOWNLOAD_URL = SoftwareProcess.DOWNLOAD_URL;

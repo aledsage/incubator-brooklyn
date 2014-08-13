@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.catalog.Catalog;
 import brooklyn.config.ConfigKey;
 import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.ConfigKeys;
@@ -59,6 +60,7 @@ import com.google.common.collect.Lists;
  * and emits HASensors.ENTITY_FAILED and ENTITY_RECOVERED as appropriate
  * @see MemberFailureDetectionPolicy
  */
+@Catalog(name="Service Failure Detector", description="HA policy for deteting failure of a service")
 public class ServiceFailureDetector extends AbstractPolicy {
 
     // TODO Remove duplication between this and MemberFailureDetectionPolicy.
