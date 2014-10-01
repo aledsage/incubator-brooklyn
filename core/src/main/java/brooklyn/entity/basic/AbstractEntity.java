@@ -192,13 +192,6 @@ public abstract class AbstractEntity extends AbstractBrooklynObject implements E
     protected final EntityManagementSupport managementSupport = new EntityManagementSupport(this);
 
     /**
-     * The config values of this entity. Updating this map should be done
-     * via getConfig/setConfig.
-     */
-    // TODO Assigning temp value because not everything uses EntitySpec; see setManagementContext()
-    private EntityConfigMap configsInternal = new EntityConfigMap(this, Maps.<ConfigKey<?>, Object>newLinkedHashMap());
-
-    /**
      * The sensor-attribute values of this entity. Updating this map should be done
      * via getAttribute/setAttribute; it will automatically emit an attribute-change event.
      */
@@ -823,133 +816,129 @@ public abstract class AbstractEntity extends AbstractBrooklynObject implements E
 
     @Override
     public <T> T getConfig(ConfigKey<T> key) {
-        return configsInternal.getConfig(key);
+        return config().getConfig(key);
     }
     
     @Override
     public <T> T getConfig(HasConfigKey<T> key) {
-        return configsInternal.getConfig(key);
+        return config().getConfig(key);
     }
     
     @Override
+    @Deprecated
     public <T> T getConfig(HasConfigKey<T> key, T defaultValue) {
-        return configsInternal.getConfig(key, defaultValue);
+        return config().getConfig(key, defaultValue);
     }
     
     //don't use groovy defaults for defaultValue as that doesn't implement the contract; we need the above
     @Override
+    @Deprecated
     public <T> T getConfig(ConfigKey<T> key, T defaultValue) {
-        return configsInternal.getConfig(key, defaultValue);
+        return config().getConfig(key, defaultValue);
     }
     
     @Override
+    @Deprecated
     public Maybe<Object> getConfigRaw(ConfigKey<?> key, boolean includeInherited) {
-        return configsInternal.getConfigRaw(key, includeInherited);
+        return config().getConfigRaw(key, includeInherited);
     }
     
     @Override
+    @Deprecated
     public Maybe<Object> getConfigRaw(HasConfigKey<?> key, boolean includeInherited) {
-        return getConfigRaw(key.getConfigKey(), includeInherited);
-    }
-
-    @SuppressWarnings("unchecked")
-    private <T> T setConfigInternal(ConfigKey<T> key, Object val) {
-        if (!inConstruction && getManagementSupport().isDeployed()) {
-            // previously we threw, then warned, but it is still quite common;
-            // so long as callers don't expect miracles, it should be fine.
-            // i (Alex) think the way to be stricter about this (if that becomes needed) 
-            // would be to introduce a 'mutable' field on config keys
-            LOG.debug("configuration being made to {} after deployment: {} = {}; change may not be visible in other contexts", 
-                    new Object[] { this, key, val });
-        }
-        T result = (T) configsInternal.setConfig(key, val);
-        
-        getManagementSupport().getEntityChangeListener().onConfigChanged(key);
-        return result;
-
+        return config().getConfigRaw(key.getConfigKey(), includeInherited);
     }
 
     @Override
+    @Deprecated
     public <T> T setConfig(ConfigKey<T> key, T val) {
-        return setConfigInternal(key, val);
+        return config().setConfig(key, val);
     }
 
     @Override
+    @Deprecated
     public <T> T setConfig(ConfigKey<T> key, Task<T> val) {
-        return setConfigInternal(key, val);
+        return config().setConfig(key, val);
     }
 
+    @Deprecated
     public <T> T setConfig(ConfigKey<T> key, DeferredSupplier val) {
-        return setConfigInternal(key, val);
+        return (T) config().setConfig(key, val);
     }
 
     @Override
+    @Deprecated
     public <T> T setConfig(HasConfigKey<T> key, T val) {
         return setConfig(key.getConfigKey(), val);
     }
 
     @Override
+    @Deprecated
     public <T> T setConfig(HasConfigKey<T> key, Task<T> val) {
         return (T) setConfig(key.getConfigKey(), val);
     }
 
+    @Deprecated
     public <T> T setConfig(HasConfigKey<T> key, DeferredSupplier val) {
         return setConfig(key.getConfigKey(), val);
     }
 
+    @Deprecated
     public <T> T setConfigEvenIfOwned(ConfigKey<T> key, T val) {
         return (T) configsInternal.setConfig(key, val);
     }
 
+    @Deprecated
     public <T> T setConfigEvenIfOwned(HasConfigKey<T> key, T val) {
         return setConfigEvenIfOwned(key.getConfigKey(), val);
     }
 
+    @Deprecated
     protected void setConfigIfValNonNull(ConfigKey key, Object val) {
         if (val != null) setConfig(key, val);
     }
     
+    @Deprecated
     protected void setConfigIfValNonNull(HasConfigKey key, Object val) {
         if (val != null) setConfig(key, val);
     }
 
     @Override
+    @Deprecated
     public void refreshInheritedConfig() {
-        if (getParent() != null) {
-            configsInternal.setInheritedConfig(((EntityInternal)getParent()).getAllConfig(), ((EntityInternal)getParent()).getAllConfigBag());
-        } else {
-            configsInternal.clearInheritedConfig();
-        }
-
-        refreshInheritedConfigOfChildren();
+        config().refreshInheritedConfig((EntityInternal)getParent());
     }
 
-    void refreshInheritedConfigOfChildren() {
+    @Override
+    protected void refreshInheritedConfigOfChildren() {
         for (Entity it : getChildren()) {
             ((EntityInternal)it).refreshInheritedConfig();
         }
     }
 
     @Override
+    @Deprecated
     public EntityConfigMap getConfigMap() {
         return configsInternal;
     }
     
     @Override
+    @Deprecated
     public Map<ConfigKey<?>,Object> getAllConfig() {
-        return configsInternal.getAllConfig();
+        return config().getAllConfig();
     }
 
     @Beta
     @Override
+    @Deprecated
     public ConfigBag getAllConfigBag() {
-        return configsInternal.getAllConfigBag();
+        return config().getAllConfigBag();
     }
 
     @Beta
     @Override
     public ConfigBag getLocalConfigBag() {
-        return configsInternal.getLocalConfigBag();
+        return config().getLocalConfigBag();
     }
 
     @Override

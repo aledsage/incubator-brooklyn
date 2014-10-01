@@ -22,7 +22,11 @@ import java.util.Set;
 
 import javax.annotation.Nonnull;
 
+import brooklyn.config.ConfigKey;
+import brooklyn.config.ConfigKey.HasConfigKey;
 import brooklyn.entity.trait.Identifiable;
+import brooklyn.management.Task;
+import brooklyn.util.guava.Maybe;
 
 import com.google.common.collect.ImmutableMap;
 
@@ -35,6 +39,8 @@ public interface BrooklynObject extends Identifiable {
      * A display name; recommended to be a concise single-line description.
      */
     String getDisplayName();
+
+    BrooklynType getType();
     
     /** 
      * Tags are arbitrary objects which can be attached to an entity for subsequent reference.
@@ -42,6 +48,8 @@ public interface BrooklynObject extends Identifiable {
      * and they should be amenable to our persistence (on-disk serialization) and our JSON serialization in the REST API.
      */
     TagSupport getTagSupport();
+    
+    ConfigurationSupport config();
     
     public static interface TagSupport {
         /**
@@ -60,4 +68,59 @@ public interface BrooklynObject extends Identifiable {
         boolean removeTag(@Nonnull Object tag);
     }
 
+    public static interface ConfigurationSupport {
+        // TODO This is a copy-paste!
+
+        // FIXME From location: deprecate/delete
+//        /** True iff the indication config key is set, either inherited (second argument true) or locally-only (second argument false) */
+//        boolean hasConfig(ConfigKey<?> key, boolean includeInherited);
+//
+//        /** Returns all config set, either inherited (argument true) or locally-only (argument false) */
+//        public Map<String,Object> getAllConfig(boolean includeInherited);
+
+        /**
+         * Gets the given configuration value for this entity, in the following order of preference:
+         * <li> value (including null) explicitly set on the entity
+         * <li> value (including null) explicitly set on an ancestor (inherited)
+         * <li> a default value (including null) on the best equivalent static key of the same name declared on the entity
+         *      (where best equivalence is defined as preferring a config key which extends another, 
+         *      as computed in EntityDynamicType.getConfigKeys)
+         * <li> a default value (including null) on the key itself
+         * <li> null
+         */
+        <T> T getConfig(ConfigKey<T> key);
+        <T> T getConfig(HasConfigKey<T> key);
+
+        /**
+         * Returns the uncoerced value for this config key as set on this entity, if available,
+         * not following any inheritance chains and not taking any default.
+         */
+        Maybe<Object> getConfigRaw(ConfigKey<?> key, boolean includeInherited);
+        Maybe<Object> getConfigRaw(HasConfigKey<?> key, boolean includeInherited);
+        
+        /**
+         * Must be called before the entity is managed.
+         */
+        <T> T setConfig(ConfigKey<T> key, T val);
+        
+        /**
+         * Sets the config to the value returned by the task.
+         * 
+         * Returns immediately without blocking; subsequent calls to {@link #getConfig(ConfigKey)} 
+         * will execute the task, and block until the task completes. 
+         * 
+         * @see {@link #setConfig(ConfigKey, Object)}
+         */
+        <T> T setConfig(ConfigKey<T> key, Task<T> val);
+        
+        /**
+         * @see {@link #setConfig(ConfigKey, Object)}
+         */
+        <T> T setConfig(HasConfigKey<T> key, T val);
+        
+        /**
+         * @see {@link #setConfig(ConfigKey, Task)}
+         */
+        <T> T setConfig(HasConfigKey<T> key, Task<T> val);
+    }
 }

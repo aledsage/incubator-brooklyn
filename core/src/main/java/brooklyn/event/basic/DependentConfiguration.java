@@ -147,6 +147,7 @@ public class DependentConfiguration {
         return ((Builder)builder).build();
     }
 
+    // FIXME Rename to blockForAttributeReady
     public static <T> T waitInTaskForAttributeReady(Entity source, AttributeSensor<T> sensor, Predicate<? super T> ready) {
         return waitInTaskForAttributeReady(source, sensor, ready, ImmutableList.<AttributeAndSensorCondition<?>>of());
     }

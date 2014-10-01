@@ -30,12 +30,14 @@ import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.basic.AbstractBrooklynObject;
 import brooklyn.config.ConfigKey;
 import brooklyn.config.ConfigKey.HasConfigKey;
 import brooklyn.config.ConfigMap;
 import brooklyn.event.basic.StructuredConfigKey;
 import brooklyn.management.ExecutionContext;
 import brooklyn.management.Task;
+import brooklyn.management.internal.ManagementContextInternal;
 import brooklyn.util.collections.MutableMap;
 import brooklyn.util.config.ConfigBag;
 import brooklyn.util.flags.FlagUtils;
@@ -54,7 +56,7 @@ public class EntityConfigMap implements ConfigMap {
     private static final Logger LOG = LoggerFactory.getLogger(EntityConfigMap.class);
 
     /** entity against which config resolution / task execution will occur */
-    private final AbstractEntity entity;
+    private final AbstractBrooklynObject entity;
 
     private final ConfigMapViewWithStringKeys mapViewWithStringKeys = new ConfigMapViewWithStringKeys(this);
 
@@ -68,7 +70,7 @@ public class EntityConfigMap implements ConfigMap {
     private final ConfigBag localConfigBag;
     private final ConfigBag inheritedConfigBag;
 
-    public EntityConfigMap(AbstractEntity entity, Map<ConfigKey<?>, Object> storage) {
+    public EntityConfigMap(AbstractBrooklynObject entity, Map<ConfigKey<?>, Object> storage) {
         this.entity = checkNotNull(entity, "entity must be specified");
         this.ownConfig = checkNotNull(storage, "storage map must be specified");
         
@@ -77,18 +79,22 @@ public class EntityConfigMap implements ConfigMap {
         this.inheritedConfigBag = ConfigBag.newInstance();
     }
 
+    @Override
     public <T> T getConfig(ConfigKey<T> key) {
         return getConfig(key, null);
     }
     
+    @Override
     public <T> T getConfig(HasConfigKey<T> key) {
         return getConfig(key.getConfigKey(), null);
     }
     
+    @Override
     public <T> T getConfig(HasConfigKey<T> key, T defaultValue) {
         return getConfig(key.getConfigKey(), defaultValue);
     }
     
+    @Override
     @SuppressWarnings("unchecked")
     public <T> T getConfig(ConfigKey<T> key, T defaultValue) {
         // FIXME What about inherited task in config?!
@@ -100,7 +106,7 @@ public class EntityConfigMap implements ConfigMap {
         // TODO If ask for a config value that's not in our configKeys, should we really continue with rest of method and return key.getDefaultValue?
         //      e.g. SshBasedJavaAppSetup calls setAttribute(JMX_USER), which calls getConfig(JMX_USER)
         //           but that example doesn't have a default...
-        ConfigKey<T> ownKey = entity!=null ? (ConfigKey<T>)elvis(entity.getEntityType().getConfigKey(key.getName()), key) : key;
+        ConfigKey<T> ownKey = entity!=null ? (ConfigKey<T>)elvis(entity.getType().getConfigKey(key.getName()), key) : key;
         
         // TODO We're notifying of config-changed because currently persistence needs to know when the
         // attributeWhenReady is complete (so it can persist the result).
@@ -129,7 +135,10 @@ public class EntityConfigMap implements ConfigMap {
             }
 
             if (rawval instanceof Task) {
-                entity.getManagementSupport().getEntityChangeListener().onConfigChanged(key);
+                // FIXME If not yet managed, then don't notify of changed; put that in onChanged?
+                //AbstractEntity entity2;
+                //entity2.getManagementSupport().getEntityChangeListener().onConfigChanged(key);
+                entity.getManagementContext().getRebindManager().getChangeListener().onChanged(entity);
             }
             if (complete) {
                 return result;
@@ -154,6 +163,7 @@ public class EntityConfigMap implements ConfigMap {
     }
     
     /** returns the config visible at this entity, local and inherited (preferring local) */
+    @Override
     public Map<ConfigKey<?>,Object> getAllConfig() {
         Map<ConfigKey<?>,Object> result = new LinkedHashMap<ConfigKey<?>,Object>(inheritedConfig.size()+ownConfig.size());
         result.putAll(inheritedConfig);
@@ -243,7 +253,7 @@ public class EntityConfigMap implements ConfigMap {
             String name = entry.getKey();
             Object value = entry.getValue();
             ConfigKey<?> key = renamedConfigKeys.get(name);
-            if (key == null) key = entity.getEntityType().getConfigKey(name);
+            if (key == null) key = entity.getType().getConfigKey(name);
             if (key != null) {
                 if (inheritedConfig.containsKey(key)) {
                     LOG.warn("Entity "+entity+" inherited duplicate config for key "+key+", via explicit config and string name "+name+"; using value of key");

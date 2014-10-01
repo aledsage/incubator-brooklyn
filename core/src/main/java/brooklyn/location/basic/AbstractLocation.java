@@ -98,8 +98,6 @@ public abstract class AbstractLocation extends AbstractBrooklynObject implements
 
     private Reference<HostGeoInfo> hostGeoInfo = new BasicReference<HostGeoInfo>();
 
-    private ConfigBag configBag = new ConfigBag();
-
     private volatile boolean managed;
 
     private boolean inConstruction;
@@ -372,20 +370,24 @@ public abstract class AbstractLocation extends AbstractBrooklynObject implements
     }
     
     @Override
+    @Deprecated
     public ConfigBag getLocalConfigBag() {
-        return configBag;
+        return config().getLocalConfigBag();
     }
 
     /** 
      * @deprecated since 0.7; use {@link #getLocalConfigBag()}
      * @since 0.6
      */
+    @Deprecated
     public ConfigBag getRawLocalConfigBag() {
-        return getLocalConfigBag();
+        return config().getLocalConfigBag();
     }
     
     @Override
+    @Deprecated
     public <T> T setConfig(ConfigKey<T> key, T value) {
+        config().setConfig(key, value);
         T result = configBag.put(key, value);
         onChanged();
         return result;

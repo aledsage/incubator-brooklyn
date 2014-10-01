@@ -18,6 +18,8 @@
  */
 package brooklyn.basic;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
@@ -25,12 +27,20 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import brooklyn.config.ConfigKey;
+import brooklyn.config.ConfigKey.HasConfigKey;
+import brooklyn.entity.basic.EntityConfigMap;
+import brooklyn.entity.basic.EntityInternal;
 import brooklyn.entity.proxying.InternalFactory;
 import brooklyn.entity.rebind.RebindManagerImpl;
+import brooklyn.management.ExecutionContext;
 import brooklyn.management.ManagementContext;
+import brooklyn.management.Task;
 import brooklyn.management.internal.ManagementContextInternal;
 import brooklyn.util.config.ConfigBag;
 import brooklyn.util.flags.SetFromFlag;
+import brooklyn.util.guava.Maybe;
+import brooklyn.util.task.DeferredSupplier;
 import brooklyn.util.text.Identifiers;
 
 import com.google.common.collect.ImmutableSet;
@@ -54,7 +64,20 @@ public abstract class AbstractBrooklynObject implements BrooklynObjectInternal {
 
     private volatile ManagementContext managementContext;
 
+    private final BasicConfigurationSupport configSupport = new BasicConfigurationSupport();
+    
+    /**
+     * The config values of this entity. Updating this map should be done
+     * via getConfig/setConfig.
+     */
+    // TODO Assigning temp value because not everything uses EntitySpec; see setManagementContext()
+    private final EntityConfigMap configsInternal = new EntityConfigMap(this, Maps.<ConfigKey<?>, Object>newLinkedHashMap());
+
     public abstract void setDisplayName(String newName);
+
+    protected abstract <T> void doReconfigureConfig(ConfigKey<T> key, T val);
+
+    protected abstract void refreshInheritedConfigOfChildren();
 
     public AbstractBrooklynObject() {
         this(Maps.newLinkedHashMap());
@@ -162,6 +185,11 @@ public abstract class AbstractBrooklynObject implements BrooklynObjectInternal {
         }
     }
 
+    // FIXME
+    public ExecutionContext getExecutionContext() {
+        throw new UnsupportedOperationException();
+    }
+
     @Override
     public String getId() {
         return id;
@@ -171,8 +199,14 @@ public abstract class AbstractBrooklynObject implements BrooklynObjectInternal {
         requestPersist();
     }
 
+    @Override
     public TagSupport getTagSupport() {
         return new BasicTagSupport();
+    }
+
+    @Override
+    public BasicConfigurationSupport config() {
+        return configSupport;
     }
 
     protected class BasicTagSupport implements TagSupport {
@@ -221,4 +255,102 @@ public abstract class AbstractBrooklynObject implements BrooklynObjectInternal {
         }
     }
 
+    public class BasicConfigurationSupport implements ConfigurationSupportInternal {
+        @Override
+        public <T> T getConfig(ConfigKey<T> key) {
+            return configsInternal.getConfig(key);
+        }
+        @Override
+        public <T> T getConfig(HasConfigKey<T> key) {
+            return configsInternal.getConfig(key);
+        }
+        @Override
+        public Maybe<Object> getConfigRaw(ConfigKey<?> key, boolean includeInherited) {
+            return configsInternal.getConfigRaw(key, includeInherited);
+        }
+        @Override
+        public Maybe<Object> getConfigRaw(HasConfigKey<?> key, boolean includeInherited) {
+            return getConfigRaw(key.getConfigKey(), includeInherited);
+        }
+        @Override
+        public <T> T setConfig(ConfigKey<T> key, T val) {
+            return setConfigInternal(key, val);
+        }
+        @Override
+        public <T> T setConfig(ConfigKey<T> key, Task<T> val) {
+            return setConfigInternal(key, val);
+        }
+        @Override
+        public <T> T setConfig(HasConfigKey<T> key, T val) {
+            return setConfig(key.getConfigKey(), val);
+        }
+        @Override
+        public <T> T setConfig(HasConfigKey<T> key, Task<T> val) {
+            return (T) setConfig(key.getConfigKey(), val);
+        }
+        @Override
+        public Map<ConfigKey<?>,Object> getAllConfig() {
+            return configsInternal.getAllConfig();
+        }
+        @Override
+        public ConfigBag getAllConfigBag() {
+            return configsInternal.getAllConfigBag();
+        }
+        @Override
+        public ConfigBag getLocalConfigBag() {
+            return configsInternal.getLocalConfigBag();
+        }
+        @Override
+        public <T> T setConfig(ConfigKey<T> key, DeferredSupplier<T> val) {
+            return setConfigInternal(key, val);
+        }
+        @Override
+        public <T> T setConfig(HasConfigKey<T> key, DeferredSupplier<T> val) {
+            return setConfig(key.getConfigKey(), val);
+        }
+        @SuppressWarnings("unchecked")
+        public <T> T setConfigEvenIfOwned(ConfigKey<T> key, T val) {
+            return (T) configsInternal.setConfig(key, val);
+        }
+        public <T> T setConfigEvenIfOwned(HasConfigKey<T> key, T val) {
+            return setConfigEvenIfOwned(key.getConfigKey(), val);
+        }
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        protected void setConfigIfValNonNull(ConfigKey key, Object val) {
+            if (val != null) setConfig(key, val);
+        }
+        @SuppressWarnings({ "unchecked", "rawtypes" })
+        protected void setConfigIfValNonNull(HasConfigKey key, Object val) {
+            if (val != null) setConfig(key, val);
+        }
+        @SuppressWarnings("unchecked")
+        private <T> T setConfigInternal(ConfigKey<T> key, Object val) {
+            if (!inConstruction && getManagementSupport().isDeployed()) {
+                // previously we threw, then warned, but it is still quite common;
+                // so long as callers don't expect miracles, it should be fine.
+                // i (Alex) think the way to be stricter about this (if that becomes needed) 
+                // would be to introduce a 'mutable' field on config keys
+                LOG.debug("configuration being made to {} after deployment: {} = {}; change may not be visible in other contexts", 
+                        new Object[] { this, key, val });
+            }
+            T result = (T) configsInternal.setConfig(key, val);
+            
+            getManagementContext().getRebindManager().getChangeListener().onChanged(AbstractBrooklynObject.this);
+            return result;
+
+        }
+        @Override
+        public void refreshInheritedConfig(BrooklynObjectInternal parent) {
+            if (parent != null) {
+                configsInternal.setInheritedConfig(parent.config().getAllConfig(), parent.config().getAllConfigBag());
+            } else {
+                configsInternal.clearInheritedConfig();
+            }
+
+            AbstractBrooklynObject.this.refreshInheritedConfigOfChildren();
+        }
+        public <K> K getRequiredConfig(ConfigKey<K> key) {
+            return checkNotNull(getConfig(key), key.getName());
+        }
+    }
 }
