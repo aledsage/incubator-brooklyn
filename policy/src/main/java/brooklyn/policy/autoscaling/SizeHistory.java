@@ -25,6 +25,7 @@ import brooklyn.util.collections.TimeWindowedList;
 import brooklyn.util.collections.TimestampedValue;
 import brooklyn.util.time.Duration;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Objects;
 
 /**
@@ -68,12 +69,24 @@ public class SizeHistory {
     
     private final TimeWindowedList<Number> recentDesiredResizes;
     
+    public SizeHistory(Duration windowSize) {
+        recentDesiredResizes = TimeWindowedList.<Number>builder()
+                .timePeriod(windowSize)
+                .minExpiredVal(1)
+                .build();
+    }
+
     public SizeHistory(long windowSize) {
-        recentDesiredResizes = new TimeWindowedList<Number>(MutableMap.of("timePeriod", windowSize, "minExpiredVals", 1));
+        this(Duration.millis(windowSize));
     }
 
     public void add(final int val) {
         recentDesiredResizes.add(val);
+    }
+
+    @VisibleForTesting
+    public void add(final int val, long timestamp) {
+        recentDesiredResizes.add(val, timestamp);
     }
 
     public void setWindowSize(Duration newWindowSize) {
@@ -92,6 +105,11 @@ public class SizeHistory {
      */
     public WindowSummary summarizeWindow(Duration windowSize) {
         long now = System.currentTimeMillis();
+        return summarizeWindow(windowSize, now);
+    }
+    
+    @VisibleForTesting
+    public WindowSummary summarizeWindow(Duration windowSize, long now) {
         List<TimestampedValue<Number>> windowVals = recentDesiredResizes.getValuesInWindow(now, windowSize);
         
         Number latestObj = latestInWindow(windowVals);

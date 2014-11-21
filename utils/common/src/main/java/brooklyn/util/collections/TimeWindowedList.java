@@ -18,12 +18,15 @@
  */
 package brooklyn.util.collections;
 
+import static com.google.common.base.Preconditions.checkNotNull;
+
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import brooklyn.util.time.Duration;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -36,6 +39,33 @@ import com.google.common.collect.ImmutableList;
  * @author aled
  */
 public class TimeWindowedList<T> {
+
+    public static <T> Builder<T> builder() {
+        return new Builder<T>();
+    }
+    
+    public static class Builder<T> {
+        private Duration timePeriod;
+        private int minVals;
+        private int minExpiredVals;
+        
+        public Builder<T> timePeriod(Duration val) {
+            this.timePeriod = val;
+            return this;
+        }
+        public Builder<T> minVals(int val) {
+            this.minVals = val;
+            return this;
+        }
+        public Builder<T> minExpiredVal(int val) {
+            this.minExpiredVals = val;
+            return this;
+        }
+        public TimeWindowedList<T> build() {
+            return new TimeWindowedList<T>(this);
+        }
+    }
+    
     private final LinkedList<TimestampedValue<T>> values = new LinkedList<TimestampedValue<T>>();
     private volatile Duration timePeriod;
     private final int minVals;
@@ -54,6 +84,9 @@ public class TimeWindowedList<T> {
         this(Duration.millis(timePeriod));
     }
 
+    /**
+     * @deprecated since 0.7.0; use {@link #builder()}
+     */
     public TimeWindowedList(Map<String,?> flags) {
         if (!flags.containsKey("timePeriod")) throw new IllegalArgumentException("Must define timePeriod");
         timePeriod = Duration.of(flags.get("timePeriod"));
@@ -69,7 +102,13 @@ public class TimeWindowedList<T> {
             minExpiredVals = 0;
         }
     }
-    
+
+    protected TimeWindowedList(Builder builder) {
+        timePeriod = checkNotNull(builder.timePeriod, "timePeriod");
+        minVals = builder.minVals;
+        minExpiredVals = builder.minExpiredVals;
+    }
+
     public void setTimePeriod(Duration newTimePeriod) {
         timePeriod = newTimePeriod;
     }
@@ -114,7 +153,8 @@ public class TimeWindowedList<T> {
     public void add(T val) {
         add(val, System.currentTimeMillis());
     }
-    
+
+    @VisibleForTesting
     public synchronized void add(T val, long timestamp) {
         values.add(values.size(), new TimestampedValue<T>(val, timestamp));
         pruneValues(timestamp);
