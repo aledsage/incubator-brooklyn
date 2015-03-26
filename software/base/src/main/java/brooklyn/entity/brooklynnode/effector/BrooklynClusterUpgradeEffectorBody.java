@@ -31,6 +31,7 @@ import brooklyn.entity.Effector;
 import brooklyn.entity.Entity;
 import brooklyn.entity.Group;
 import brooklyn.entity.basic.Attributes;
+import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.EntityPredicates;
 import brooklyn.entity.basic.EntityTasks;
 import brooklyn.entity.basic.Lifecycle;
@@ -155,6 +156,9 @@ public class BrooklynClusterUpgradeEffectorBody extends EffectorBody<Void> imple
         
         //any other nodes created via other means should also be using the new spec, so initialMembers will be all the old version nodes
         DynamicTasks.queue(Effectors.invocation(BrooklynNode.STOP_NODE_BUT_LEAVE_APPS, Collections.emptyMap(), initialMembers)).asTask().getUnchecked();
+        for (Entity initialMember : initialMembers) {
+            Entities.unmanage(initialMember);
+        }
     }
 
     private TaskAdaptable<Collection<Entity>> newCreateNodesTask(int size, String name) {

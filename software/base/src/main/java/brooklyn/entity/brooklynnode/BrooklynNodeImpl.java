@@ -24,8 +24,6 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 
-import javax.annotation.Nullable;
-
 import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +35,6 @@ import brooklyn.entity.Effector;
 import brooklyn.entity.Entity;
 import brooklyn.entity.basic.Attributes;
 import brooklyn.entity.basic.BrooklynTaskTags;
-import brooklyn.entity.basic.Entities;
 import brooklyn.entity.basic.Lifecycle;
 import brooklyn.entity.basic.ServiceStateLogic;
 import brooklyn.entity.basic.ServiceStateLogic.ServiceNotUpLogic;
@@ -49,7 +46,6 @@ import brooklyn.entity.brooklynnode.effector.SetHighAvailabilityPriorityEffector
 import brooklyn.entity.effector.EffectorBody;
 import brooklyn.entity.effector.Effectors;
 import brooklyn.entity.software.MachineLifecycleEffectorTasks;
-import brooklyn.entity.trait.Startable;
 import brooklyn.event.feed.ConfigToAttributes;
 import brooklyn.event.feed.http.HttpFeed;
 import brooklyn.event.feed.http.HttpPollConfig;
@@ -57,7 +53,6 @@ import brooklyn.event.feed.http.HttpValueFunctions;
 import brooklyn.event.feed.http.JsonFunctions;
 import brooklyn.location.access.BrooklynAccessUtils;
 import brooklyn.location.basic.Locations;
-import brooklyn.management.Task;
 import brooklyn.management.TaskAdaptable;
 import brooklyn.management.ha.ManagementNodeState;
 import brooklyn.util.collections.Jsonya;
@@ -75,7 +70,6 @@ import brooklyn.util.task.TaskTags;
 import brooklyn.util.task.Tasks;
 import brooklyn.util.text.Strings;
 import brooklyn.util.time.Duration;
-import brooklyn.util.time.Time;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
@@ -90,28 +84,6 @@ public class BrooklynNodeImpl extends SoftwareProcessImpl implements BrooklynNod
 
     static {
         RendererHints.register(WEB_CONSOLE_URI, RendererHints.namedActionWithUrl());
-    }
-
-    private static class UnmanageTask implements Runnable {
-        private Task<?> latchTask;
-        private Entity unmanageEntity;
-
-        public UnmanageTask(@Nullable Task<?> latchTask, Entity unmanageEntity) {
-            this.latchTask = latchTask;
-            this.unmanageEntity = unmanageEntity;
-        }
-
-        public void run() {
-            if (latchTask != null) {
-                latchTask.blockUntilEnded();
-            } else {
-                log.debug("No latch task provided for UnmanageTask, falling back to fixed wait");
-                Time.sleep(Duration.FIVE_SECONDS);
-            }
-            synchronized (this) {
-                Entities.unmanage(unmanageEntity);
-            }
-        }
     }
 
     private HttpFeed httpFeed;
@@ -216,19 +188,6 @@ public class BrooklynNodeImpl extends SoftwareProcessImpl implements BrooklynNod
                 }
             }
         }).build());
-    }
-
-    @Override
-    protected void postStop() {
-        super.postStop();
-        if (isMachineStopped()) {
-            // Don't unmanage in entity's task context as it will self-cancel the task. Wait for the stop effector to complete.
-            // If this is not enough (still getting Caused by: java.util.concurrent.CancellationException: null) then
-            // we could search for the top most task with entity context == this and wait on it. Even stronger would be
-            // to wait for BrooklynTaskTags.getTasksInEntityContext(ExecutionManager, this).isEmpty();
-            Task<?> stopEffectorTask = BrooklynTaskTags.getClosestEffectorTask(Tasks.current(), Startable.STOP);
-            getManagementContext().getExecutionManager().submit(new UnmanageTask(stopEffectorTask, this));
-        }
     }
 
     private boolean isMachineStopped() {

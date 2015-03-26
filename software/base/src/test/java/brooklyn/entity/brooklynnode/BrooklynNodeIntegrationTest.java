@@ -512,8 +512,10 @@ services:
 
         // Note can't use driver.isRunning to check shutdown; can't invoke scripts on an unmanaged entity
         EntityTestUtils.assertAttributeEquals(brooklynNode, BrooklynNode.SERVICE_UP, false);
-        assertFalse(Entities.isManaged(brooklynNode));
         assertFalse(isPidRunning(pidFile), "pid in "+pidFile+" still running");
+        
+        // Should leave entity as managed; it's up to the caller (e.g. the cluster) to unmanage it
+        assertTrue(Entities.isManaged(brooklynNode));
     }
 
     private boolean isPidRunning(File pidFile) throws Exception {
