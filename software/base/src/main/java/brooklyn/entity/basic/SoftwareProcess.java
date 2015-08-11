@@ -214,7 +214,21 @@ public interface SoftwareProcess extends Entity, Startable {
                     "several others. Set to null or to 0 to disable any delay.",
             Duration.TEN_SECONDS);
 
-    /** controls the behavior when starting (stop, restart) {@link Startable} children as part of the start (stop, restart) effector on this entity
+    /**
+     * Sets the object that manages the sequence of calls of the entity's driver.
+     */
+    @Beta
+    @SetFromFlag("lifecycleEffectorTasks")
+    ConfigKey<SoftwareProcessDriverLifecycleEffectorTasks> LIFECYCLE_EFFECTOR_TASKS = ConfigKeys.newConfigKey(SoftwareProcessDriverLifecycleEffectorTasks.class,
+            "softwareProcess.lifecycleTasks", "An object that handles lifecycle of an entity's associated machine.",
+            new SoftwareProcessDriverLifecycleEffectorTasks());
+
+    ConfigKey<Boolean> RETRIEVE_USAGE_METRICS = ConfigKeys.newBooleanConfigKey(
+            "metrics.usage.retrieve",
+            "Whether to retrieve the usage (e.g. performance) metrics",
+            true);
+
+    /** Controls the behavior when starting (stop, restart) {@link Startable} children as part of the start (stop, restart) effector on this entity
      * <p>
      * (NB: restarts are currently not propagated to children in the default {@link SoftwareProcess}
      * due to the various semantics which may be desired; this may change, but if entities have specific requirements for restart,
