@@ -18,6 +18,7 @@
  */
 package brooklyn.test.entity;
 
+import brooklyn.entity.basic.EntityLocal;
 import brooklyn.entity.java.VanillaJavaApp;
 import brooklyn.entity.proxying.ImplementedBy;
 import brooklyn.entity.webapp.WebAppService;
@@ -26,7 +27,7 @@ import brooklyn.entity.webapp.WebAppService;
  * Mock web application server entity for testing.
  */
 @ImplementedBy(TestJavaWebAppEntityImpl.class)
-public interface TestJavaWebAppEntity extends VanillaJavaApp, WebAppService {
+public interface TestJavaWebAppEntity extends VanillaJavaApp, WebAppService, EntityLocal {
 
     void spoofRequest();
     int getA();
