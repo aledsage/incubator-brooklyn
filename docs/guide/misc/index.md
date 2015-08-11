@@ -1,6 +1,6 @@
 ---
 # BROOKLYN_VERSION_BELOW
-title: Other 0.7.0-incubating Resources
+title: Other 0.7.1-SNAPSHOT Resources
 layout: website-normal
 children:
 - { title: Javadoc, path: javadoc/ }
