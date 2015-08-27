@@ -18,7 +18,11 @@
  */
 package org.apache.brooklyn.api.entity;
 
+import java.util.Map;
+
+import org.apache.brooklyn.api.mgmt.SubscriptionContext;
 import org.apache.brooklyn.api.mgmt.SubscriptionHandle;
+import org.apache.brooklyn.api.mgmt.SubscriptionManager;
 import org.apache.brooklyn.api.mgmt.Task;
 import org.apache.brooklyn.api.sensor.AttributeSensor;
 import org.apache.brooklyn.api.sensor.Sensor;
@@ -44,12 +48,6 @@ public interface EntityLocal extends Entity {
     
     // FIXME Rename to something other than EntityLocal.
     // Separate out what is specific to "local jvm", and what is here for an SPI rather than API.
-
-    /**
-     * Sets the entity's display name.
-     * Must be called before the entity is managed.
-     */
-    void setDisplayName(String displayName);
 
     /**
      * @deprecated since 0.7.0; use {@link #config()}, such as {@code entity.config().set(key, val)}

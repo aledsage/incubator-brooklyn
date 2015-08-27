@@ -76,6 +76,11 @@ public interface Entity extends BrooklynObject {
      */
     String getDisplayName();
     
+    /**
+     * Sets the entity's display name.
+     */
+    void setDisplayName(String displayName);
+
     /** 
      * A URL pointing to an image which can be used to represent this entity.
      */
