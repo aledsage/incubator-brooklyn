@@ -220,6 +220,8 @@ public abstract class AbstractEntity extends AbstractBrooklynObject implements E
 
     private final BasicSensorSupport sensors = new BasicSensorSupport();
 
+    private final BasicSubscriptionSupport subscriptions = new BasicSubscriptionSupport();
+
     /**
      * The config values of this entity. Updating this map should be done
      * via getConfig/setConfig.
@@ -926,6 +928,15 @@ public abstract class AbstractEntity extends AbstractBrooklynObject implements E
         return sensors;
     }
 
+    @Override 
+    @Beta
+    // the concrete type rather than an interface is returned because Groovy subclasses
+    // complain (incorrectly) if we return SensorsSupport
+    // TODO revert to SubscriptionSupportInternal when groovy subclasses work without this (eg new groovy version)
+    public BasicSubscriptionSupport subscriptions() {
+        return subscriptions;
+    }
+
     /**
      * Direct use of this class is strongly discouraged. It will become private in a future release,
      * once {@link #sensors()} is reverted to return {@link SensorsSupport} instead of
@@ -1182,7 +1193,56 @@ public abstract class AbstractEntity extends AbstractBrooklynObject implements E
 
         }
     }
-    
+
+    /**
+     * Direct use of this class is strongly discouraged. It will become private in a future release,
+     * once {@link #sensors()} is reverted to return {@link SensorsSupport} instead of
+     * {@link BasicSensorSupport}.
+     */
+    @Beta
+    // TODO revert to private when config() is reverted to return SubscriptionSupportInternal
+    public class BasicSubscriptionSupport implements SubscriptionSupportInternal {
+        @Override
+        public <T> SubscriptionHandle subscribe(Entity producer, Sensor<T> sensor, SensorEventListener<? super T> listener) {
+            return getSubscriptionTracker().subscribe(producer, sensor, listener);
+        }
+
+        @Override
+        public <T> SubscriptionHandle subscribeToChildren(Entity parent, Sensor<T> sensor, SensorEventListener<? super T> listener) {
+            return getSubscriptionTracker().subscribeToChildren(parent, sensor, listener);
+        }
+
+        @Override
+        public <T> SubscriptionHandle subscribeToMembers(Group group, Sensor<T> sensor, SensorEventListener<? super T> listener) {
+            return getSubscriptionTracker().subscribeToMembers(group, sensor, listener);
+        }
+
+        /**
+         * @see SubscriptionContext#unsubscribe(SubscriptionHandle)
+         */
+        @Override
+        public boolean unsubscribe(Entity producer) {
+            return getSubscriptionTracker().unsubscribe(producer);
+        }
+
+        /**
+         * @see SubscriptionContext#unsubscribe(SubscriptionHandle)
+         */
+        @Override
+        public boolean unsubscribe(Entity producer, SubscriptionHandle handle) {
+            return getSubscriptionTracker().unsubscribe(producer, handle);
+        }
+
+        protected SubscriptionTracker getSubscriptionTracker() {
+            synchronized (AbstractEntity.this) {
+                if (_subscriptionTracker == null) {
+                    _subscriptionTracker = new SubscriptionTracker(getSubscriptionContext());
+                }
+                return _subscriptionTracker;
+            }
+        }
+    }
+
     @Override
     public <T> T getConfig(ConfigKey<T> key) {
         return config().get(key);
@@ -1331,56 +1391,52 @@ public abstract class AbstractEntity extends AbstractBrooklynObject implements E
     
     // -------- SUBSCRIPTIONS --------------
 
-    /** @see EntityLocal#subscribe */
     @Override
+    @Deprecated
     public <T> SubscriptionHandle subscribe(Entity producer, Sensor<T> sensor, SensorEventListener<? super T> listener) {
-        return getSubscriptionTracker().subscribe(producer, sensor, listener);
+        return subscriptions().subscribe(producer, sensor, listener);
     }
 
-    /** @see EntityLocal#subscribeToChildren */
     @Override
+    @Deprecated
     public <T> SubscriptionHandle subscribeToChildren(Entity parent, Sensor<T> sensor, SensorEventListener<? super T> listener) {
-        return getSubscriptionTracker().subscribeToChildren(parent, sensor, listener);
+        return subscriptions().subscribeToChildren(parent, sensor, listener);
     }
 
-    /** @see EntityLocal#subscribeToMembers */
     @Override
+    @Deprecated
     public <T> SubscriptionHandle subscribeToMembers(Group group, Sensor<T> sensor, SensorEventListener<? super T> listener) {
-        return getSubscriptionTracker().subscribeToMembers(group, sensor, listener);
+        return subscriptions().subscribeToMembers(group, sensor, listener);
     }
 
-    /**
-     * Unsubscribes the given producer.
-     *
-     * @see SubscriptionContext#unsubscribe(SubscriptionHandle)
-     */
     @Override
+    @Deprecated
     public boolean unsubscribe(Entity producer) {
-        return getSubscriptionTracker().unsubscribe(producer);
+        return subscriptions().unsubscribe(producer);
+    }
+
+    @Override
+    @Deprecated
+    public boolean unsubscribe(Entity producer, SubscriptionHandle handle) {
+        return subscriptions().unsubscribe(producer, handle);
     }
 
     /**
-     * Unsubscribes the given handle.
-     *
-     * @see SubscriptionContext#unsubscribe(SubscriptionHandle)
+     * @deprecated since 0.8.0; see {@link BasicSubscriptionSupport#getSubscriptionTracker()}; sub-classes should 
+     *             not be calling this internal method.
      */
-    @Override
-    public boolean unsubscribe(Entity producer, SubscriptionHandle handle) {
-        return getSubscriptionTracker().unsubscribe(producer, handle);
-    }
-
-    @Override
-    public synchronized SubscriptionContext getSubscriptionContext() {
-        return getManagementSupport().getSubscriptionContext();
-    }
-
-    protected synchronized SubscriptionTracker getSubscriptionTracker() {
-        if (_subscriptionTracker == null) {
-            _subscriptionTracker = new SubscriptionTracker(getSubscriptionContext());
-        }
-        return _subscriptionTracker;
+    @Deprecated
+    protected SubscriptionTracker getSubscriptionTracker() {
+        return subscriptions().getSubscriptionTracker();
     }
     
+    @Override
+    public SubscriptionContext getSubscriptionContext() {
+        synchronized (AbstractEntity.this) {
+            return getManagementSupport().getSubscriptionContext();
+        }
+    }
+
     @Override
     public synchronized ExecutionContext getExecutionContext() {
         return getManagementSupport().getExecutionContext();

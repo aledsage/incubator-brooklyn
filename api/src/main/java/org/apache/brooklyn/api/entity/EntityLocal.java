@@ -18,11 +18,7 @@
  */
 package org.apache.brooklyn.api.entity;
 
-import java.util.Map;
-
-import org.apache.brooklyn.api.mgmt.SubscriptionContext;
 import org.apache.brooklyn.api.mgmt.SubscriptionHandle;
-import org.apache.brooklyn.api.mgmt.SubscriptionManager;
 import org.apache.brooklyn.api.mgmt.Task;
 import org.apache.brooklyn.api.sensor.AttributeSensor;
 import org.apache.brooklyn.api.sensor.Sensor;
@@ -106,40 +102,38 @@ public interface EntityLocal extends Entity {
     <T> T getConfig(HasConfigKey<T> key, T defaultValue);
 
     /**
-     * Allow us to subscribe to data from a {@link Sensor} on another entity.
-     * 
-     * @return a subscription id which can be used to unsubscribe
-     *
-     * @see SubscriptionManager#subscribe(Map, Entity, Sensor, SensorEventListener)
+     * @deprecated since 0.8.0; use {@link SubscriptionSupport#subscribe(Entity, Sensor, SensorEventListener)} via code like {@code subscriptions().subscribe(producer, sensor, listener)}.
      */
-    // FIXME remove from interface?
     @Beta
+    @Deprecated
     <T> SubscriptionHandle subscribe(Entity producer, Sensor<T> sensor, SensorEventListener<? super T> listener);
  
-    /** @see SubscriptionManager#subscribeToChildren(Map, Entity, Sensor, SensorEventListener) */
-    // FIXME remove from interface?
+    /**
+     * @deprecated since 0.8.0; use {@link SubscriptionSupport#subscribeToChildren(Entity, Sensor, SensorEventListener) via code like {@code subscriptions().subscribeToChildren(parent, sensor, listener)}.
+     */
     @Beta
+    @Deprecated
     <T> SubscriptionHandle subscribeToChildren(Entity parent, Sensor<T> sensor, SensorEventListener<? super T> listener);
  
-    /** @see SubscriptionManager#subscribeToMembers(Group, Sensor, SensorEventListener) */
-    // FIXME remove from interface?
+    /**
+     * @deprecated since 0.8.0; use {@link SubscriptionSupport#subscribeToMembers(Group, Sensor, SensorEventListener) via code like {@code subscriptions().subscribeToMembers(group, sensor, listener)}.
+     */
     @Beta
+    @Deprecated
     <T> SubscriptionHandle subscribeToMembers(Group group, Sensor<T> sensor, SensorEventListener<? super T> listener);
 
     /**
-     * Unsubscribes from the given producer.
-     *
-     * @see SubscriptionContext#unsubscribe(SubscriptionHandle)
+     * @deprecated since 0.8.0; use {@link SubscriptionSupport#unsubscribe(Entity) via code like {@code subscriptions().unsubscribe(producer)}.
      */
     @Beta
+    @Deprecated
     boolean unsubscribe(Entity producer);
 
     /**
-     * Unsubscribes the given handle.
-     *
-     * @see SubscriptionContext#unsubscribe(SubscriptionHandle)
+     * @deprecated since 0.8.0; use {@link SubscriptionSupport#unsubscribe(Entity, SubscriptionHandle) via code like {@code subscriptions().unsubscribe(producer, handle)}.
      */
     @Beta
+    @Deprecated
     boolean unsubscribe(Entity producer, SubscriptionHandle handle);
 
     /**
