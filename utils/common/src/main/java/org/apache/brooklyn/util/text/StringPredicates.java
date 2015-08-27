@@ -227,6 +227,33 @@ public class StringPredicates {
 
     // -----------------
     
+    /**
+     * @since 0.8.0
+     */
+    public static <T extends CharSequence> Predicate<T> endsWith(final String prefix) {
+        return new EndsWith<T>(prefix);
+    }
+
+    /**
+     * @since 0.8.0
+     */
+    private static final class EndsWith<T extends CharSequence> implements Predicate<T> {
+        private final String prefix;
+        private EndsWith(String prefix) {
+            this.prefix = prefix;
+        }
+        @Override
+        public boolean apply(CharSequence input) {
+            return (input != null) && input.toString().endsWith(prefix);
+        }
+        @Override
+        public String toString() {
+            return "endsWith("+prefix+")";
+        }
+    }
+
+    // -----------------
+    
     /** true if the object *is* a {@link CharSequence} starting with the given prefix */
     public static Predicate<Object> isStringStartingWith(final String prefix) {
         return Predicates.<Object>and(Predicates.instanceOf(CharSequence.class),

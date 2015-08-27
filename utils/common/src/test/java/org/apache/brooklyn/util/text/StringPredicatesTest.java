@@ -18,7 +18,6 @@
  */
 package org.apache.brooklyn.util.text;
 
-import org.apache.brooklyn.util.text.StringPredicates;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -56,11 +55,18 @@ public class StringPredicatesTest {
     
     @Test
     public static void testStartsWith() {
-        Assert.assertTrue(StringPredicates.startsWith("t").apply("test"));
-        Assert.assertFalse(StringPredicates.startsWith("v").apply("test"));
+        Assert.assertTrue(StringPredicates.startsWith("t").apply("tes"));
+        Assert.assertFalse(StringPredicates.startsWith("v").apply("tes"));
         
-        Assert.assertTrue(StringPredicates.isStringStartingWith("t").apply("test"));
+        Assert.assertTrue(StringPredicates.isStringStartingWith("t").apply("tes"));
+        Assert.assertFalse(StringPredicates.isStringStartingWith("v").apply("tes"));
         Assert.assertFalse(StringPredicates.isStringStartingWith("t").apply(true));
+    }
+    
+    @Test
+    public static void testEndsWith() {
+        Assert.assertTrue(StringPredicates.endsWith("s").apply("tes"));
+        Assert.assertFalse(StringPredicates.endsWith("v").apply("tes"));
     }
     
     @Test
