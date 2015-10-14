@@ -45,6 +45,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -75,8 +76,46 @@ import org.apache.brooklyn.core.location.cloud.names.CloudMachineNamer;
 import org.apache.brooklyn.core.mgmt.persist.LocationWithObjectStore;
 import org.apache.brooklyn.core.mgmt.persist.PersistenceObjectStore;
 import org.apache.brooklyn.core.mgmt.persist.jclouds.JcloudsBlobStoreBasedObjectStore;
+import org.apache.brooklyn.location.jclouds.JcloudsPredicates.NodeInLocation;
 import org.apache.brooklyn.location.jclouds.networking.JcloudsPortForwarderExtension;
+import org.apache.brooklyn.location.jclouds.templates.PortableTemplateBuilder;
 import org.apache.brooklyn.location.jclouds.zone.AwsAvailabilityZoneExtension;
+import org.apache.brooklyn.location.ssh.SshMachineLocation;
+import org.apache.brooklyn.location.winrm.WinRmMachineLocation;
+import org.apache.brooklyn.util.collections.MutableList;
+import org.apache.brooklyn.util.collections.MutableMap;
+import org.apache.brooklyn.util.collections.MutableSet;
+import org.apache.brooklyn.util.core.ResourceUtils;
+import org.apache.brooklyn.util.core.config.ConfigBag;
+import org.apache.brooklyn.util.core.crypto.SecureKeys;
+import org.apache.brooklyn.util.core.flags.MethodCoercions;
+import org.apache.brooklyn.util.core.flags.SetFromFlag;
+import org.apache.brooklyn.util.core.flags.TypeCoercions;
+import org.apache.brooklyn.util.core.internal.ssh.ShellTool;
+import org.apache.brooklyn.util.core.internal.ssh.SshTool;
+import org.apache.brooklyn.util.core.text.TemplateProcessor;
+import org.apache.brooklyn.util.exceptions.CompoundRuntimeException;
+import org.apache.brooklyn.util.exceptions.Exceptions;
+import org.apache.brooklyn.util.exceptions.ReferenceWithError;
+import org.apache.brooklyn.util.guava.Maybe;
+import org.apache.brooklyn.util.javalang.Enums;
+import org.apache.brooklyn.util.javalang.Reflections;
+import org.apache.brooklyn.util.net.Cidr;
+import org.apache.brooklyn.util.net.Networking;
+import org.apache.brooklyn.util.net.Protocol;
+import org.apache.brooklyn.util.os.Os;
+import org.apache.brooklyn.util.repeat.Repeater;
+import org.apache.brooklyn.util.ssh.BashCommands;
+import org.apache.brooklyn.util.ssh.IptablesCommands;
+import org.apache.brooklyn.util.ssh.IptablesCommands.Chain;
+import org.apache.brooklyn.util.ssh.IptablesCommands.Policy;
+import org.apache.brooklyn.util.stream.Streams;
+import org.apache.brooklyn.util.text.ByteSizeStrings;
+import org.apache.brooklyn.util.text.Identifiers;
+import org.apache.brooklyn.util.text.KeyValueParser;
+import org.apache.brooklyn.util.text.Strings;
+import org.apache.brooklyn.util.time.Duration;
+import org.apache.brooklyn.util.time.Time;
 import org.jclouds.aws.ec2.compute.AWSEC2TemplateOptions;
 import org.jclouds.cloudstack.compute.options.CloudStackTemplateOptions;
 import org.jclouds.compute.ComputeService;
@@ -139,45 +178,6 @@ import com.google.common.collect.Sets.SetView;
 import com.google.common.io.Files;
 import com.google.common.net.HostAndPort;
 import com.google.common.primitives.Ints;
-
-import org.apache.brooklyn.location.jclouds.JcloudsPredicates.NodeInLocation;
-import org.apache.brooklyn.location.jclouds.templates.PortableTemplateBuilder;
-import org.apache.brooklyn.location.ssh.SshMachineLocation;
-import org.apache.brooklyn.location.winrm.WinRmMachineLocation;
-import org.apache.brooklyn.util.collections.MutableList;
-import org.apache.brooklyn.util.collections.MutableMap;
-import org.apache.brooklyn.util.collections.MutableSet;
-import org.apache.brooklyn.util.core.ResourceUtils;
-import org.apache.brooklyn.util.core.config.ConfigBag;
-import org.apache.brooklyn.util.core.crypto.SecureKeys;
-import org.apache.brooklyn.util.core.flags.MethodCoercions;
-import org.apache.brooklyn.util.core.flags.SetFromFlag;
-import org.apache.brooklyn.util.core.flags.TypeCoercions;
-import org.apache.brooklyn.util.core.internal.ssh.ShellTool;
-import org.apache.brooklyn.util.core.internal.ssh.SshTool;
-import org.apache.brooklyn.util.core.text.TemplateProcessor;
-import org.apache.brooklyn.util.exceptions.CompoundRuntimeException;
-import org.apache.brooklyn.util.exceptions.Exceptions;
-import org.apache.brooklyn.util.exceptions.ReferenceWithError;
-import org.apache.brooklyn.util.guava.Maybe;
-import org.apache.brooklyn.util.javalang.Enums;
-import org.apache.brooklyn.util.javalang.Reflections;
-import org.apache.brooklyn.util.net.Cidr;
-import org.apache.brooklyn.util.net.Networking;
-import org.apache.brooklyn.util.net.Protocol;
-import org.apache.brooklyn.util.os.Os;
-import org.apache.brooklyn.util.repeat.Repeater;
-import org.apache.brooklyn.util.ssh.BashCommands;
-import org.apache.brooklyn.util.ssh.IptablesCommands;
-import org.apache.brooklyn.util.ssh.IptablesCommands.Chain;
-import org.apache.brooklyn.util.ssh.IptablesCommands.Policy;
-import org.apache.brooklyn.util.stream.Streams;
-import org.apache.brooklyn.util.text.ByteSizeStrings;
-import org.apache.brooklyn.util.text.Identifiers;
-import org.apache.brooklyn.util.text.KeyValueParser;
-import org.apache.brooklyn.util.text.Strings;
-import org.apache.brooklyn.util.time.Duration;
-import org.apache.brooklyn.util.time.Time;
 
 import io.cloudsoft.winrm4j.pywinrm.Session;
 import io.cloudsoft.winrm4j.pywinrm.WinRMFactory;
@@ -752,13 +752,15 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
             if (skipJcloudsSshing) {
                 boolean waitForConnectable = (windows) ? waitForWinRmable : waitForSshable;
                 if (waitForConnectable) {
+                    LoginCredentials loginCredentials;
                     if (windows) {
                         // TODO Does jclouds support any windows user setup?
                         waitForWinRmAvailable(computeService, node, sshHostAndPortOverride, node.getCredentials(), setup);
+                        loginCredentials = node.getCredentials();
                     } else {
-                        waitForSshable(computeService, node, sshHostAndPortOverride, node.getCredentials(), setup);
+                        loginCredentials = waitForSshable(computeService, node, sshHostAndPortOverride, node.getCredentials(), setup);
                     }
-                    userCredentials = createUser(computeService, node, sshHostAndPortOverride, setup);
+                    userCredentials = createUser(computeService, node, sshHostAndPortOverride, loginCredentials, setup);
                 }
             }
 
@@ -773,6 +775,7 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
                 if (customCredentials.getOptionalPrivateKey().isPresent()) setup.put(PRIVATE_KEY_DATA, customCredentials.getOptionalPrivateKey().get());
             }
             if (userCredentials == null) {
+                // TODO See waitForSshable, which now handles if the node.getLoginCredentials has both a password+key
                 userCredentials = extractVmCredentials(setup, node);
             }
             if (userCredentials != null) {
@@ -1575,7 +1578,7 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
     /**
      * Create the user immediately - executing ssh commands as required.
      */
-    protected LoginCredentials createUser(ComputeService computeService, NodeMetadata node, Optional<HostAndPort> hostAndPortOverride, ConfigBag config) {
+    protected LoginCredentials createUser(ComputeService computeService, NodeMetadata node, Optional<HostAndPort> hostAndPortOverride, LoginCredentials initialCredentials, ConfigBag config) {
         Image image = (node.getImageId() != null) ? computeService.getImage(node.getImageId()) : null;
         UserCreation userCreation = createUserStatements(image, config);
 
@@ -1601,7 +1604,6 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
                     commands.add(statement.render(scriptOsFamily));
                 }
 
-                LoginCredentials initialCredentials = node.getCredentials();
                 Optional<String> initialPassword = initialCredentials.getOptionalPassword();
                 Optional<String> initialPrivateKey = initialCredentials.getOptionalPrivateKey();
                 String initialUser = initialCredentials.getUser();
@@ -2509,7 +2511,7 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
         waitForReachable(checker, connectionDetails, expectedCredentials, setup, timeout);
     }
 
-    protected void waitForSshable(final ComputeService computeService, final NodeMetadata node, Optional<HostAndPort> hostAndPortOverride, final LoginCredentials expectedCredentials, ConfigBag setup) {
+    protected LoginCredentials waitForSshable(final ComputeService computeService, final NodeMetadata node, Optional<HostAndPort> hostAndPortOverride, final LoginCredentials expectedCredentials, ConfigBag setup) {
         String waitForSshable = setup.get(WAIT_FOR_SSHABLE);
         checkArgument(!"false".equalsIgnoreCase(waitForSshable), "waitForReachable called despite waitForSshable=%s", waitForSshable);
 
@@ -2529,26 +2531,37 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
         int vmPort = hostAndPortOverride.isPresent() ? hostAndPortOverride.get().getPortOrDefault(22) : 22;
 
         String connectionDetails = user + "@" + vmIp + ":" + vmPort;
-
-        Callable<Boolean> checker;
-        if (hostAndPortOverride.isPresent()) {
-            final SshMachineLocation machine = createTemporarySshMachineLocation(hostAndPortOverride.get(), expectedCredentials, setup);
-            checker = new Callable<Boolean>() {
-                public Boolean call() {
-                    int exitstatus = machine.execScript("check-connectivity", ImmutableList.of("hostname"));
-                    return exitstatus == 0;
-                }};
+        final HostAndPort hostAndPort = hostAndPortOverride.isPresent() ? hostAndPortOverride.get() : HostAndPort.fromParts(vmIp, vmPort);
+        final AtomicReference<LoginCredentials> credsSuccessful = new AtomicReference<LoginCredentials>(expectedCredentials);
+        
+        // For OpenStack (Bluebox), Aled has seen it return both a password and an auto-generated private key
+        // in the expectedCredentials. However, only the ssh key can be used to login (I believe) so it times
+        // out trying. Therefore let it try with both.
+        final Map<SshMachineLocation, LoginCredentials> machinesToTry = Maps.newLinkedHashMap();
+        if (expectedCredentials.getOptionalPassword().isPresent() && expectedCredentials.getOptionalPrivateKey().isPresent()) {
+            LoginCredentials credsWithKey = LoginCredentials.builder(expectedCredentials).noPassword().build();
+            LoginCredentials credsWithPassword = LoginCredentials.builder(expectedCredentials).noPrivateKey().build();
+            machinesToTry.put(createTemporarySshMachineLocation(hostAndPort, credsWithKey, setup), credsWithKey);
+            machinesToTry.put(createTemporarySshMachineLocation(hostAndPort, credsWithPassword, setup), credsWithPassword);
         } else {
-            checker = new Callable<Boolean>() {
-                public Boolean call() {
-                    Statement statement = Statements.newStatementList(exec("hostname"));
-                    ExecResponse response = computeService.runScriptOnNode(node.getId(), statement,
-                            overrideLoginCredentials(expectedCredentials).runAsRoot(false));
-                    return response.getExitStatus() == 0;
-                }};
+            machinesToTry.put(createTemporarySshMachineLocation(hostAndPort, expectedCredentials, setup), expectedCredentials);
         }
+        Callable<Boolean> checker = new Callable<Boolean>() {
+            public Boolean call() {
+                for (Map.Entry<SshMachineLocation, LoginCredentials> entry : machinesToTry.entrySet()) {
+                    SshMachineLocation machine = entry.getKey();
+                    int exitstatus = machine.execScript("check-connectivity", ImmutableList.of("true"));
+                    boolean success = (exitstatus == 0);
+                    if (success) {
+                        credsSuccessful.set(entry.getValue());
+                        return true;
+                    }
+                }
+                return false;
+            }};
 
         waitForReachable(checker, connectionDetails, expectedCredentials, setup, timeout);
+        return credsSuccessful.get();
     }
 
     protected void waitForReachable(Callable<Boolean> checker, String connectionDetails, LoginCredentials expectedCredentials, ConfigBag setup, Duration timeout) {
