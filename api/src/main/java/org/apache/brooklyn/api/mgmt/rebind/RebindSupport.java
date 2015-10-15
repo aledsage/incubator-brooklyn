@@ -30,7 +30,12 @@ import org.apache.brooklyn.api.mgmt.rebind.mementos.Memento;
  * {@code entity.getRebindSupport().reconstruct(rebindContext, memento)}.
  * 
  * @author aled
+ * 
+ * @deprecated since 0.9.0; the persistence/rebind mechanism is internal to Brooklyn; there should
+ *             be no need for end-users to implement their own RebindSupport. Config and attributes
+ *             are persisted and re-set - that should be the mechanism relied upon. 
  */
+@Deprecated
 public interface RebindSupport<T extends Memento> {
 
     /**

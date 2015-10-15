@@ -29,6 +29,12 @@ import org.apache.brooklyn.util.text.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * @deprecated since 0.9.0; the persistence/rebind mechanism is internal to Brooklyn; there should
+ *             be no need for end-users to implement their own RebindSupport. Config and attributes
+ *             are persisted and re-set - that should be the mechanism relied upon. 
+ */
+@Deprecated
 public abstract class AbstractBrooklynObjectRebindSupport<T extends Memento> implements RebindSupport<T> {
 
     private static final Logger LOG = LoggerFactory.getLogger(AbstractBrooklynObjectRebindSupport.class);
