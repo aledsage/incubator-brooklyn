@@ -22,7 +22,11 @@ import org.apache.brooklyn.api.location.Location;
 
 /**
  * {@link Location} representing an application container on a PaaS provider.
+ * 
+ * @deprecated since 0.9.0; deployment to a PaaS (e.g. CloudFoundry) is being revisited, and is 
+ *             extremely unlikely to use this class moving forwards!
  */
+@Deprecated
 public interface PaasLocation extends Location {
     
     String getPaasProviderName();
