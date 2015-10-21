@@ -46,6 +46,7 @@ import org.jclouds.compute.ComputeServiceContext;
 import org.jclouds.compute.callables.RunScriptOnNode;
 import org.jclouds.compute.domain.ExecResponse;
 import org.jclouds.compute.domain.Hardware;
+import org.jclouds.compute.domain.Image;
 import org.jclouds.compute.domain.NodeMetadata;
 import org.jclouds.compute.domain.OperatingSystem;
 import org.jclouds.compute.domain.OsFamily;
@@ -73,12 +74,51 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
     @SetFromFlag
     JcloudsLocation jcloudsParent;
     
+    /**
+     * @deprecated since 0.9.0; the node should not be persisted.
+     */
     @SetFromFlag
+    @Deprecated
     NodeMetadata node;
     
+    /**
+     * @deprecated since 0.9.0; the template should not be persisted.
+     */
     @SetFromFlag
+    @Deprecated
     Template template;
     
+    @SetFromFlag
+    String nodeId;
+
+    @SetFromFlag
+    String imageId;
+
+    @SetFromFlag
+    Set<String> privateAddresses;
+    
+    @SetFromFlag
+    Set<String> publicAddresses;
+
+    @SetFromFlag
+    String hostname;
+
+    /**
+     * Historically, "node" and "template" were persisted. However that is a very bad idea!
+     * It means we pull in lots of jclouds classes into the persisted state. We are at an  
+     * intermediate stage, where we want to handle rebinding to old state that has "node"
+     * and new state that should not. We therefore leave in the {@code @SetFromFlag} on node
+     * so that we read it back, but we ensure the value is null when we write it out!
+     * 
+     * TODO We will rename these to get rid of the ugly underscore when the old node/template 
+     * fields are deleted.
+     */
+    private transient Optional<NodeMetadata> _node;
+
+    private transient Optional<Template> _template;
+
+    private transient Optional<Image> _image;
+
     private RunScriptOnNode.Factory runScriptFactory;
     
     public JcloudsSshMachineLocation() {
@@ -91,7 +131,7 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
     public JcloudsSshMachineLocation(Map<?,?> flags, JcloudsLocation jcloudsParent, NodeMetadata node) {
         super(flags);
         this.jcloudsParent = jcloudsParent;
-        this.node = node;
+        setNode(node);
         
         init();
     }
@@ -114,6 +154,15 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
         super.rebind();
         ComputeServiceContext context = jcloudsParent.getComputeService().getContext();
         runScriptFactory = context.utils().injector().getInstance(RunScriptOnNode.Factory.class);
+        
+        if (node != null) {
+            setNode(node);
+            node = null;
+        }
+        if (template != null) {
+            setTemplate(template);
+            template = null;
+        }
     }
     
     @Override
@@ -121,23 +170,79 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
         return Objects.toStringHelper(this).omitNullValues()
                 .add("id", getId()).add("name", getDisplayName())
                 .add("user", getUser()).add("address", getAddress()).add("port", getConfig(SSH_PORT))
-                .add("node", getNode())
+                .add("node", getOptionalNode())
                 .add("jcloudsId", getJcloudsId())
-                .add("privateAddresses", node.getPrivateAddresses())
-                .add("publicAddresses", node.getPublicAddresses())
+                .add("privateAddresses", getPrivateAddresses())
+                .add("publicAddresses", getPublicAddresses())
                 .add("parentLocation", getParent())
                 .add("osDetails", getOsDetails())
                 .toString();
     }
 
+    protected void setNode(NodeMetadata node) {
+        nodeId = node.getId();
+        imageId = node.getImageId();
+        privateAddresses = node.getPrivateAddresses();
+        publicAddresses = node.getPublicAddresses();
+        hostname = node.getHostname();
+        _node = Optional.of(node);
+    }
+
+    protected void setTemplate(Template template) {
+        _template = Optional.of(template);
+        _image = Optional.fromNullable(template.getImage());
+    }
+
     @Override
+    public Optional<NodeMetadata> getOptionalNode() {
+      if (_node == null) {
+          _node = Optional.fromNullable(getParent().getComputeService().getNodeMetadata(nodeId));
+      }
+      return _node;
+    }
+
+    protected Optional<Image> getOptionalImage() {
+      if (_image == null) {
+          _image = Optional.fromNullable(getParent().getComputeService().getImage(imageId));
+      }
+      return _image;
+    }
+
+    /**
+     * @since 0.9.0
+     * @deprecated since 0.9.0 (only added as aid until the deprecated {@link #getTemplate()} is deleted)
+     */
+    @Deprecated
+    protected Optional<Template> getOptionalTemplate() {
+        if (_template == null) {
+            _template = Optional.absent();
+        }
+        return _template;
+    }
+
+    /**
+     * @deprecated since 0.9.0
+     */
+    @Override
+    @Deprecated
     public NodeMetadata getNode() {
-        return node;
+        Optional<NodeMetadata> result = getOptionalNode();
+        if (result.isPresent()) {
+            return result.get();
+        } else {
+            throw new IllegalStateException("Node "+nodeId+" not present in "+getParent());
+        }
     }
     
     @Override
     public Template getTemplate() {
-        return template;
+        LOG.warn("Deprecated use of getTemplate() for {}", this);
+        Optional<Template> result = getOptionalTemplate();
+        if (result.isPresent()) {
+            return result.get();
+        } else {
+            throw new IllegalStateException("Template for "+nodeId+" (in "+getParent()+") not cached");
+        }
     }
     
     @Override
@@ -147,34 +252,40 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
     
     @Override
     public String getHostname() {
-        return node.getHostname();
+        return hostname;
     }
     
     /** In most clouds, the public hostname is the only way to ensure VMs in different zones can access each other. */
     @Override
     public Set<String> getPublicAddresses() {
-        return node.getPublicAddresses();
+        return publicAddresses;
     }
     
     @Override
     public Set<String> getPrivateAddresses() {
-        return node.getPrivateAddresses();
+        return privateAddresses;
     }
 
     @Override
     public String getSubnetHostname() {
-        String privateHostname = jcloudsParent.getPrivateHostname(node, Optional.<HostAndPort>absent(), config().getBag());
+        if (privateHostname == null) {
+            Optional<NodeMetadata> node = getOptionalNode();
+            if (node.isPresent()) {
+                privateHostname = jcloudsParent.getPrivateHostname(node.get(), Optional.<HostAndPort>absent(), config().getBag());
+            }
+        }
         return privateHostname;
     }
 
     @Override
     public String getSubnetIp() {
+        FIXME;
         Optional<String> privateAddress = getPrivateAddress();
         if (privateAddress.isPresent()) {
             return privateAddress.get();
         }
 
-        String hostname = jcloudsParent.getPublicHostname(node, Optional.<HostAndPort>absent(), config().getBag());
+        String hostname = jcloudsParent.getPublicHostname(getNode(), Optional.<HostAndPort>absent(), config().getBag());
         if (hostname != null && !Networking.isValidIp4(hostname)) {
             try {
                 return InetAddress.getByName(hostname).getHostAddress();
@@ -186,8 +297,8 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
     }
 
     protected Optional<String> getPrivateAddress() {
-        if (groovyTruth(node.getPrivateAddresses())) {
-            for (String p : node.getPrivateAddresses()) {
+        if (groovyTruth(getPrivateAddresses())) {
+            for (String p : getPrivateAddresses()) {
                 // disallow local only addresses
                 if (Networking.isLocalOnly(p)) continue;
                 // other things may be public or private, but either way, return it
@@ -199,25 +310,54 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
     
     @Override
     public String getJcloudsId() {
-        return node.getId();
+        return nodeId;
     }
+    
+    protected String getImageId() {
+        return imageId;
+    }
+
     
     /** executes the given statements on the server using jclouds ScriptBuilder,
      * wrapping in a script which is polled periodically.
      * the output is returned once the script completes (disadvantage compared to other methods)
      * but the process is nohupped and the SSH session is not kept, 
      * so very useful for long-running processes
+     * 
+     * @deprecated since 0.9.0; use standard {@link #execScript(String, List)} and the other variants.
      */
+    @Deprecated
     public ListenableFuture<ExecResponse> submitRunScript(String ...statements) {
         return submitRunScript(new InterpretableStatement(statements));
     }
+
+    /**
+     * @deprecated since 0.9.0; use standard {@link #execScript(String, List)} and the other variants.
+     */
+    @Deprecated
     public ListenableFuture<ExecResponse> submitRunScript(Statement script) {
         return submitRunScript(script, new RunScriptOptions());            
     }
+    
+    /**
+     * @deprecated since 0.9.0; use standard {@link #execScript(String, List)} and the other variants.
+     */
+    @Deprecated
     public ListenableFuture<ExecResponse> submitRunScript(Statement script, RunScriptOptions options) {
-        return runScriptFactory.submit(node, script, options);
+        Optional<NodeMetadata> node = getOptionalNode();
+        if (node.isPresent()) {
+            return runScriptFactory.submit(node.get(), script, options);
+        } else {
+            throw new IllegalStateException("Node "+nodeId+" not present in "+getParent());
+        }
     }
-    /** uses submitRunScript to execute the commands, and throws error if it fails or returns non-zero */
+    
+    /**
+     * Uses submitRunScript to execute the commands, and throws error if it fails or returns non-zero
+     * 
+     * @deprecated since 0.9.0; use standard {@link #execScript(String, List)} and the other variants.
+     */
+    @Deprecated
     public void execRemoteScript(String ...commands) {
         try {
             ExecResponse result = submitRunScript(commands).get();
@@ -235,44 +375,70 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
      * Retrieves the password for this VM, if one exists. The behaviour/implementation is different for different clouds.
      * e.g. on Rackspace, the password for a windows VM is available immediately; on AWS-EC2, for a Windows VM you need 
      * to poll repeatedly until the password is available which can take up to 15 minutes.
+     * 
+     * @deprecated since 0.9.0; use the machine to execute commands, so no need to extract the password
      */
+    @Deprecated
     public String waitForPassword() {
-        // TODO Hacky; don't want aws specific stuff here but what to do?!
-        if (jcloudsParent.getProvider().equals("aws-ec2")) {
-            try {
-                return JcloudsUtil.waitForPasswordOnAws(jcloudsParent.getComputeService(), node, 15, TimeUnit.MINUTES);
-            } catch (TimeoutException e) {
-                throw Throwables.propagate(e);
+        Optional<NodeMetadata> node = getOptionalNode();
+        if (node.isPresent()) {
+            // TODO Hacky; don't want aws specific stuff here but what to do?!
+            if (jcloudsParent.getProvider().equals("aws-ec2")) {
+                try {
+                    return JcloudsUtil.waitForPasswordOnAws(jcloudsParent.getComputeService(), node.get(), 15, TimeUnit.MINUTES);
+                } catch (TimeoutException e) {
+                    throw Throwables.propagate(e);
+                }
+            } else {
+                LoginCredentials credentials = node.get().getCredentials();
+                return (credentials != null) ? credentials.getOptionalPassword().orNull() : null;
             }
         } else {
-            LoginCredentials credentials = node.getCredentials();
-            return (credentials != null) ? credentials.getPassword() : null;
+            throw new IllegalStateException("Node "+nodeId+" not present in "+getParent());
         }
     }
 
+    protected Optional<OperatingSystem> getOptionalOperatingSystem() {
+        Optional<NodeMetadata> node = getOptionalNode();
+        
+        OperatingSystem os = node.isPresent() ? node.get().getOperatingSystem() : null;
+        if (os == null) {
+            // some nodes (eg cloudstack, gce) might not get OS available on the node,
+            // so also try taking it from the image if available
+            Optional<Image> image = getOptionalImage();
+            if (image.isPresent()) {
+                os = image.get().getOperatingSystem();
+            }
+        }
+        return Optional.fromNullable(os);
+    }
+
+    protected Optional<Hardware> getOptionalHardware() {
+        Optional<NodeMetadata> node = getOptionalNode();
+        return Optional.fromNullable(node.isPresent() ? node.get().getHardware() : null);
+    }
+    
     @Override
     protected MachineDetails inferMachineDetails() {
         Optional<String> name = Optional.absent();
         Optional<String> version = Optional.absent();
         Optional<String> architecture = Optional.absent();
-
-        OperatingSystem os = node.getOperatingSystem();
-        if (os == null && getTemplate() != null && getTemplate().getImage() != null)
-            // some nodes (eg cloudstack, gce) might not get OS available on the node,
-            // so also try taking it from the template if available
-            os = getTemplate().getImage().getOperatingSystem();
-
-        if (os != null) {
+        Optional<OperatingSystem> os = getOptionalOperatingSystem();
+        Optional<Hardware> hardware = getOptionalHardware();
+        
+        if (os.isPresent()) {
             // Note using family rather than name. Name is often unset.
-            name = Optional.fromNullable(os.getFamily() != null && !OsFamily.UNRECOGNIZED.equals(os.getFamily()) ? os.getFamily().toString() : null);
-            version = Optional.fromNullable(!Strings.isBlank(os.getVersion()) ? os.getVersion() : null);
             // Using is64Bit rather then getArch because getArch often returns "paravirtual"
-            architecture = Optional.fromNullable(os.is64Bit() ? BasicOsDetails.OsArchs.X_86_64 : BasicOsDetails.OsArchs.I386);
+            OsFamily family = os.get().getFamily();
+            String versionRaw = os.get().getVersion();
+            boolean is64Bit = os.get().is64Bit();
+            name = Optional.fromNullable(family != null && !OsFamily.UNRECOGNIZED.equals(family) ? family.toString() : null);
+            version = Optional.fromNullable(Strings.isNonBlank(versionRaw) ? versionRaw : null);
+            architecture = Optional.fromNullable(is64Bit ? BasicOsDetails.OsArchs.X_86_64 : BasicOsDetails.OsArchs.I386);
         }
 
-        Hardware hardware = node.getHardware();
-        Optional<Integer> ram = hardware==null ? Optional.<Integer>absent() : Optional.fromNullable(hardware.getRam());
-        Optional<Integer> cpus = hardware==null ? Optional.<Integer>absent() : Optional.fromNullable(hardware.getProcessors() != null ? hardware.getProcessors().size() : null);
+        Optional<Integer> ram = hardware.isPresent() ? Optional.fromNullable(hardware.get().getRam()) : Optional.<Integer>absent();
+        Optional<Integer> cpus = hardware.isPresent() ? Optional.fromNullable(hardware.get().getProcessors() != null ? hardware.get().getProcessors().size() : null) : Optional.<Integer>absent();
 
         // Skip superclass' SSH to machine if all data is present, otherwise defer to super
         if (name.isPresent() && version.isPresent() && architecture.isPresent() && ram.isPresent() && cpus.isPresent()) {
@@ -303,22 +469,24 @@ public class JcloudsSshMachineLocation extends SshMachineLocation implements Jcl
 
     @Override
     public Map<String, String> toMetadataRecord() {
-        Hardware hardware = node.getHardware();
-        List<? extends Processor> processors = (hardware != null) ? hardware.getProcessors() : null;
+        Optional<NodeMetadata> node = getOptionalNode();
+        
+        Optional<Hardware> hardware = getOptionalHardware();
+        List<? extends Processor> processors = (hardware.isPresent() ? hardware.get().getProcessors() : null;
         
         ImmutableMap.Builder<String, String> builder = ImmutableMap.builder();
         builder.putAll(super.toMetadataRecord());
         putIfNotNull(builder, "provider", getParent().getProvider());
         putIfNotNull(builder, "account", getParent().getIdentity());
-        putIfNotNull(builder, "serverId", node.getProviderId());
-        putIfNotNull(builder, "imageId", node.getImageId());
-        putIfNotNull(builder, "instanceTypeName", (hardware != null ? hardware.getName() : null));
-        putIfNotNull(builder, "instanceTypeId", (hardware != null ? hardware.getProviderId() : null));
-        putIfNotNull(builder, "ram", "" + (hardware != null ? hardware.getRam() : null));
+        putIfNotNull(builder, "serverId", getJcloudsId()); // FIXME used to be node.getProviderId()
+        putIfNotNull(builder, "imageId", getImageId());
+        putIfNotNull(builder, "instanceTypeName", (hardware.isPresent() ? hardware.get().getName() : null));
+        putIfNotNull(builder, "instanceTypeId", (hardware.isPresent() ? hardware.get().getProviderId() : null));
+        putIfNotNull(builder, "ram", "" + (hardware.isPresent() ? hardware.get().getRam() : null));
         putIfNotNull(builder, "cpus", "" + (processors != null ? processors.size() : null));
         
         try {
-            OsDetails osDetails = getOsDetails();
+            OsDetails osDetails = getOsDetails();fixme;
             putIfNotNull(builder, "osName", osDetails.getName());
             putIfNotNull(builder, "osArch", osDetails.getArch());
             putIfNotNull(builder, "is64bit", osDetails.is64bit() ? "true" : "false");
