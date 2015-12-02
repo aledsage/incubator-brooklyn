@@ -60,6 +60,8 @@ import org.apache.brooklyn.api.location.MachineManagementMixins;
 import org.apache.brooklyn.api.location.NoMachinesAvailableException;
 import org.apache.brooklyn.api.location.PortRange;
 import org.apache.brooklyn.api.mgmt.AccessController;
+import org.apache.brooklyn.api.mgmt.Task;
+import org.apache.brooklyn.api.mgmt.TaskAdaptable;
 import org.apache.brooklyn.config.ConfigKey;
 import org.apache.brooklyn.config.ConfigKey.HasConfigKey;
 import org.apache.brooklyn.core.config.ConfigUtils;
@@ -96,6 +98,9 @@ import org.apache.brooklyn.util.core.flags.SetFromFlag;
 import org.apache.brooklyn.util.core.flags.TypeCoercions;
 import org.apache.brooklyn.util.core.internal.ssh.ShellTool;
 import org.apache.brooklyn.util.core.internal.ssh.SshTool;
+import org.apache.brooklyn.util.core.task.DynamicTasks;
+import org.apache.brooklyn.util.core.task.TaskBuilder;
+import org.apache.brooklyn.util.core.task.Tasks;
 import org.apache.brooklyn.util.core.text.TemplateProcessor;
 import org.apache.brooklyn.util.exceptions.CompoundRuntimeException;
 import org.apache.brooklyn.util.exceptions.Exceptions;
@@ -2407,13 +2412,13 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
         }
     }
 
-    protected void releasePortForwarding(SshMachineLocation machine) {
+    protected void releasePortForwarding(final SshMachineLocation machine) {
         // TODO Implementation needs revisisted. It relies on deprecated PortForwardManager methods.
 
         boolean usePortForwarding = Boolean.TRUE.equals(machine.getConfig(USE_PORT_FORWARDING));
-        JcloudsPortForwarderExtension portForwarder = machine.getConfig(PORT_FORWARDER);
+        final JcloudsPortForwarderExtension portForwarder = machine.getConfig(PORT_FORWARDER);
         PortForwardManager portForwardManager = machine.getConfig(PORT_FORWARDING_MANAGER);
-        NodeMetadata node = (machine instanceof JcloudsSshMachineLocation) ? ((JcloudsSshMachineLocation) machine).getNode() : null;
+        final NodeMetadata node = (machine instanceof JcloudsSshMachineLocation) ? ((JcloudsSshMachineLocation) machine).getNode() : null;
 
         if (portForwarder == null) {
             LOG.debug("No port-forwarding to close (because portForwarder null) on release of " + machine);
@@ -2437,14 +2442,34 @@ public class JcloudsLocation extends AbstractCloudMachineProvisioningLocation im
                 mappings = ImmutableSet.of();
             }
 
-            for (PortMapping mapping : mappings) {
-                HostAndPort publicEndpoint = mapping.getPublicEndpoint();
-                int targetPort = mapping.getPrivatePort();
-                Protocol protocol = Protocol.TCP;
+            final TaskBuilder<Void> builder = TaskBuilder.<Void>builder()
+                    .parallel(true)
+                    .displayName("close port-forwarding at "+machine);
+
+            for (final PortMapping mapping : mappings) {
+                final HostAndPort publicEndpoint = mapping.getPublicEndpoint();
+                final int targetPort = mapping.getPrivatePort();
+                final Protocol protocol = Protocol.TCP;
                 if (publicEndpoint != null) {
-                    LOG.debug("Closing port-forwarding at {} for machine {}: {}->{}", new Object[] {this, machine, publicEndpoint, targetPort});
-                    portForwarder.closePortForwarding(node, targetPort, publicEndpoint, protocol);
+                    builder.add(TaskBuilder.builder().displayName("Close port-forward at " +machine).body(new Runnable() {
+                        @Override
+                        public void run() {
+                            LOG.debug("Closing port-forwarding at {} for machine {}: {}->{}", new Object[] {this, machine, publicEndpoint, targetPort});
+                            portForwarder.closePortForwarding(node, targetPort, publicEndpoint, protocol);
+                        }
+                    }).build());
                 }
+            }
+            final Task<Void> task = builder.build();
+            final DynamicTasks.TaskQueueingResult<Void> queueResult = DynamicTasks.queueIfPossible(task);
+            if(!queueResult.isQueuedOrSubmitted()){
+                getManagementContext().getExecutionManager().submit(queueResult);
+            }
+            final String origDetails = Tasks.setBlockingDetails("waiting for closing port-forwarding of "+machine);
+            try {
+                task.blockUntilEnded();
+            } finally {
+                Tasks.setBlockingDetails(origDetails);
             }
         }
 
