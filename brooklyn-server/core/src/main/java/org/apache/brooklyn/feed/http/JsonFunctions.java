@@ -82,7 +82,7 @@ public class JsonFunctions {
                     JsonObject jo = curr.getAsJsonObject();
                     curr = jo.get(element);
                     if (curr==null)
-                        throw new NoSuchElementException("No element '"+element+" in JSON, when walking "+elements);
+                        throw new NoSuchElementException("No element '"+element+"' in JSON, when walking "+elements);
                 }
                 return curr;
             }
@@ -118,7 +118,7 @@ public class JsonFunctions {
                     if (curr.isAbsent()) return curr;
                     JsonObject jo = curr.get().getAsJsonObject();
                     JsonElement currO = jo.get(element);
-                    if (currO==null) return Maybe.absent("No element '"+element+" in JSON, when walking "+elements);
+                    if (currO==null) return Maybe.absent("No element '"+element+"' in JSON, when walking "+elements);
                     curr = Maybe.of(currO);
                 }
                 return curr;
@@ -223,7 +223,7 @@ public class JsonFunctions {
                 JsonObject jo = curr.getAsJsonObject();
                 curr = jo.get(element);
                 if (curr==null)
-                    throw new NoSuchElementException("No element '"+element+" in JSON, when walking "+elements);
+                    throw new NoSuchElementException("No element '"+element+"' in JSON, when walking "+elements);
             }
             return curr;
         }
@@ -291,7 +291,7 @@ public class JsonFunctions {
                 if (curr.isAbsent()) return curr;
                 JsonObject jo = curr.get().getAsJsonObject();
                 JsonElement currO = jo.get(element);
-                if (currO==null) return Maybe.absent("No element '"+element+" in JSON, when walking "+elements);
+                if (currO==null) return Maybe.absent("No element '"+element+"' in JSON, when walking "+elements);
                 curr = Maybe.of(currO);
             }
             return curr;
